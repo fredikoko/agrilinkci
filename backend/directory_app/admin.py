@@ -27,9 +27,9 @@ class OtpChallengeAdmin(admin.ModelAdmin):
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):
-    list_display = ("reference", "user", "amount", "currency", "status", "channel", "created_at")
+    list_display = ("reference", "user", "amount", "currency", "status", "channel", "transaction_id", "created_at")
     list_filter = ("status", "currency", "channel")
-    search_fields = ("reference", "user__username", "paystack_transaction_id")
+    search_fields = ("reference", "user__username", "transaction_id", "paystack_transaction_id")
     readonly_fields = ("provider_response",)
 
 

@@ -15,7 +15,7 @@ from .models import (
     Vendor,
     VendorProduct,
 )
-from .paystack_service import verify_and_activate_payment
+from .chariow_service import verify_and_activate_payment
 
 
 class V2FinanceAndStockTests(TestCase):
@@ -47,15 +47,15 @@ class V2FinanceAndStockTests(TestCase):
         )
         return user, vendor
 
-    @override_settings(PAYSTACK_AMOUNT_MULTIPLIER=1, PAYSTACK_SUBSCRIPTION_DAYS=30)
-    def test_paystack_verification_is_idempotent(self):
-        user = get_user_model().objects.create_user(username="idempotent-paystack", email="idempotent@example.com")
+    @override_settings(CHARIOW_SUBSCRIPTION_DAYS=30)
+    def test_chariow_verification_is_idempotent(self):
+        user = get_user_model().objects.create_user(username="idempotent-chariow", email="idempotent@example.com")
         account = PhoneAccount.objects.create(user=user, phone_e164="+2250700000088", role=PhoneAccount.Role.BUYER, phone_verified=True)
         payment = Payment.objects.create(user=user, reference="AGRILINK-IDEMPOTENT", amount=5000, currency="XOF", status=Payment.Status.SUCCESS, channel="card", paid_at=timezone.now())
         subscription = SellerSubscription.objects.create(user=user, payment=payment, starts_at=timezone.now(), ends_at=timezone.now() + timedelta(days=30))
         original_end = subscription.ends_at
 
-        with patch("directory_app.paystack_service._request") as verify_request:
+        with patch("directory_app.chariow_service._request") as verify_request:
             result = verify_and_activate_payment(user, payment.reference)
 
         verify_request.assert_not_called()

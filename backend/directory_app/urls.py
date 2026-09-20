@@ -13,6 +13,7 @@ from .buyer_views import BuyerProfileMeView, BuyerRecommendationsView
 from .admin_dashboard_views import AdminFinancialDashboardView
 from .notification_views import NotificationDeviceView, NotificationListView, NotificationReadView, VendorPromotionView
 from .payment_views import (
+    ChariowWebhookView,
     PaystackWebhookView,
     SellerFreeActivateView,
     SubscriptionPaymentInitializeView,
@@ -120,6 +121,8 @@ urlpatterns = [
     path("payments/subscription/initialize/", SubscriptionPaymentInitializeView.as_view(), name="subscription-payment-initialize"),
     path("payments/subscription/verify/", SubscriptionPaymentVerifyView.as_view(), name="subscription-payment-verify"),
     path("payments/subscription/status/", SubscriptionStatusView.as_view(), name="subscription-status"),
+    path("payments/chariow/webhook/", ChariowWebhookView.as_view(), name="chariow-webhook"),
+    path("payments/webhook/", ChariowWebhookView.as_view(), name="payment-webhook"),
     path("payments/paystack/webhook/", PaystackWebhookView.as_view(), name="paystack-webhook"),
     path("seller/analytics/", VendorAnalyticsView.as_view(), name="seller-analytics"),
     path("", include(router.urls)),

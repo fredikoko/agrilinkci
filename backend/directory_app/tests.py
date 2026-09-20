@@ -7,7 +7,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
-from .models import BuyerProfile, PhoneAccount, Region, Vendor, VendorReview
+from .models import BuyerProfile, Payment, PhoneAccount, Region, Vendor, VendorReview
 
 
 
@@ -92,13 +92,13 @@ class AgriLinkApiTests(TestCase):
         self.assertEqual(BuyerProfile.objects.count(), 1)
 
     @override_settings(
-        PAYSTACK_SECRET_KEY="sk_test_demo",
-        PAYSTACK_SUBSCRIPTION_AMOUNT=5000,
-        PAYSTACK_AMOUNT_MULTIPLIER=1,
-        PAYSTACK_CURRENCY="XOF",
-        PAYSTACK_SUBSCRIPTION_DAYS=30,
+        CHARIOW_API_KEY="sk_test_demo",
+        CHARIOW_SELLER_PRODUCT_ID="prd_test_seller",
+        CHARIOW_SUBSCRIPTION_AMOUNT=5000,
+        CHARIOW_CURRENCY="XOF",
+        CHARIOW_SUBSCRIPTION_DAYS=30,
     )
-    def test_paystack_payment_activates_seller_subscription(self):
+    def test_chariow_payment_activates_seller_subscription(self):
         user = get_user_model().objects.create_user(username="buyer-payment-test", email="buyer.payment@example.com")
         PhoneAccount.objects.create(
             user=user,
@@ -112,6 +112,8 @@ class AgriLinkApiTests(TestCase):
         class FakeResponse:
             def __init__(self, payload):
                 self.payload = payload
+                self.ok = True
+                self.status_code = 200
 
             def raise_for_status(self):
                 return None
@@ -121,35 +123,38 @@ class AgriLinkApiTests(TestCase):
 
         reference_holder = {}
 
-        def fake_paystack_request(method, url, **kwargs):
+        def fake_chariow_request(method, url, **kwargs):
             if method == "POST":
-                reference_holder["value"] = kwargs["json"]["reference"]
+                reference_holder["value"] = kwargs["json"]["metadata"]["reference"]
                 return FakeResponse(
                     {
-                        "status": True,
                         "data": {
-                            "authorization_url": "https://checkout.paystack.com/demo",
-                            "access_code": "demo-access",
+                            "step": "payment",
+                            "payment": {
+                                "checkout_url": "https://chariow.com/checkout/demo",
+                            },
+                            "id": "sale_chariow_12345",
                         },
                     }
                 )
             return FakeResponse(
                 {
-                    "status": True,
-                    "data": {
-                        "status": "success",
-                        "reference": reference_holder["value"],
-                        "amount": 5000,
-                        "currency": "XOF",
-                        "channel": "card",
-                        "id": 12345,
-                    },
+                    "data": [
+                        {
+                            "status": "completed",
+                            "reference": reference_holder.get("value"),
+                            "amount": 5000,
+                            "currency": "XOF",
+                            "payment_method": "orange_money",
+                            "id": "sale_chariow_12345",
+                        }
+                    ],
                 }
             )
 
         with patch(
-            "directory_app.paystack_service.requests.request",
-            side_effect=fake_paystack_request,
+            "directory_app.chariow_service.requests.request",
+            side_effect=fake_chariow_request,
         ):
             initialized = client.post("/api/payments/subscription/initialize/", {}, format="json")
             self.assertEqual(initialized.status_code, 201)
@@ -407,6 +412,61 @@ class AgriLinkApiTests(TestCase):
         self.assertEqual(res_ok.status_code, 200)
         user.refresh_from_db()
         self.assertTrue(user.check_password("RobustPassword456!"))
+
+    @override_settings(
+        CHARIOW_API_KEY="sk_test_demo",
+        CHARIOW_WEBHOOK_SECRET="whsec_test_secret",
+        CHARIOW_SUBSCRIPTION_DAYS=30,
+    )
+    def test_chariow_webhook_activates_seller_subscription(self):
+        import hashlib
+        import hmac
+        import json
+
+        user = get_user_model().objects.create_user(username="webhook-user", email="webhook@example.com")
+        PhoneAccount.objects.create(user=user, phone_e164="+2250700000077", role="buyer", phone_verified=True)
+        payment = Payment.objects.create(
+            user=user,
+            reference="AGRILINK-WH-TEST-1",
+            amount=5000,
+            currency="XOF",
+            status=Payment.Status.PENDING,
+        )
+
+        payload_dict = {
+            "event": "successful.sale",
+            "data": {
+                "id": "sale_wh_999",
+                "status": "completed",
+                "reference": payment.reference,
+                "amount": 5000,
+                "currency": "XOF",
+                "payment_method": "orange_money",
+                "metadata": {
+                    "reference": payment.reference,
+                    "purpose": "seller_subscription",
+                },
+            },
+        }
+        body = json.dumps(payload_dict).encode("utf-8")
+        sig = hmac.new("whsec_test_secret".encode("utf-8"), body, hashlib.sha256).hexdigest()
+
+        with patch("directory_app.chariow_service._request") as mock_req:
+            mock_req.return_value = {"data": {"id": "sale_wh_999", "status": "completed", "reference": payment.reference}}
+            response = self.client.post(
+                "/api/payments/chariow/webhook/",
+                data=body,
+                content_type="application/json",
+                HTTP_X_CHARIOW_SIGNATURE=f"sha256={sig}",
+                HTTP_X_PULSE_EVENT="successful.sale",
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payment.refresh_from_db()
+        self.assertEqual(payment.status, Payment.Status.SUCCESS)
+        self.assertTrue(user.seller_subscription.is_active)
+        user.phone_account.refresh_from_db()
+        self.assertEqual(user.phone_account.role, PhoneAccount.Role.SELLER)
 
 
 

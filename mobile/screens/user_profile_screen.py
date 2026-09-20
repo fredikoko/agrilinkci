@@ -58,7 +58,7 @@ class UserProfileScreen(BaseScreen):
         content.add_widget(self.seller_button)
 
         self.payment_reference = TextInput(
-            hint_text="Référence Paystack après paiement",
+            hint_text="Référence Chariow après paiement",
             multiline=False,
             size_hint_y=None,
             height=dp(44),
@@ -149,7 +149,7 @@ class UserProfileScreen(BaseScreen):
         if self.current_role == "seller":
             self.set_status("Votre espace vendeur est déjà activé.", PRIMARY)
             return
-        self.set_status("Préparation du paiement Paystack...")
+        self.set_status("Préparation du paiement Chariow...")
         ApiClient.request(
             "payments/subscription/initialize/",
             self._payment_initialized,
@@ -160,7 +160,7 @@ class UserProfileScreen(BaseScreen):
 
     def _payment_initialized(self, data: Any) -> None:
         reference = data.get("reference", "")
-        authorization_url = data.get("authorization_url")
+        authorization_url = data.get("checkout_url") or data.get("authorization_url")
         self.payment_reference.text = reference
         if authorization_url:
             webbrowser.open(authorization_url)
@@ -169,12 +169,12 @@ class UserProfileScreen(BaseScreen):
                 PRIMARY,
             )
         else:
-            self.set_status("URL Paystack indisponible. Utilisez la référence puis réessayez.", (0.7, 0.1, 0.1, 1))
+            self.set_status("URL Chariow indisponible. Utilisez la référence puis réessayez.", (0.7, 0.1, 0.1, 1))
 
     def verify_seller_payment(self, *_args) -> None:
         reference = self.payment_reference.text.strip()
         if not reference:
-            self.set_status("Saisissez la référence Paystack après le paiement.", (0.7, 0.1, 0.1, 1))
+            self.set_status("Saisissez la référence Chariow après le paiement.", (0.7, 0.1, 0.1, 1))
             return
         self.set_status("Vérification du paiement en cours...")
         ApiClient.request(

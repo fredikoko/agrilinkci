@@ -1,28 +1,37 @@
+import hashlib
+import hmac
 import logging
+import re
 import uuid
 from datetime import timedelta
 
-import requests
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
+
+import requests
+from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from directory_app.models import Payment
-from .models import ConseilSubscription
+from .models import Payment, PhoneAccount, SellerSubscription
+from .subscription_notifications import notify_seller_subscription_confirmed
 
 logger = logging.getLogger(__name__)
 
 
-class ConseilPaymentError(Exception):
+class ChariowError(Exception):
+    """Exception levée en cas d'erreur avec l'API ou le service Chariow."""
     pass
 
 
-def _headers():
+# Alias pour rétro-compatibilité
+PaystackError = ChariowError
+
+
+def _headers() -> dict[str, str]:
     api_key = getattr(settings, "CHARIOW_API_KEY", "")
     if not api_key:
-        raise ConseilPaymentError("CHARIOW_API_KEY n’est pas configurée.")
+        raise ChariowError("CHARIOW_API_KEY n’est pas configurée sur le serveur.")
     return {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
@@ -30,7 +39,7 @@ def _headers():
     }
 
 
-def _request(method, path, **kwargs):
+def _request(method: str, path: str, **kwargs) -> dict:
     base_url = getattr(settings, "CHARIOW_BASE_URL", "https://api.chariow.com/v1").rstrip("/")
     url = f"{base_url}/{path.lstrip('/')}"
     try:
@@ -45,35 +54,46 @@ def _request(method, path, **kwargs):
             payload = response.json()
         except ValueError as exc:
             response.raise_for_status()
-            raise ConseilPaymentError("Réponse Chariow non JSON.") from exc
+            raise ChariowError("Réponse Chariow non JSON.") from exc
 
         if not response.ok:
-            msg = (
+            message = (
                 payload.get("message")
                 or payload.get("error")
                 or payload.get("errors")
                 or f"Erreur HTTP {response.status_code} depuis Chariow."
             )
-            raise ConseilPaymentError(str(msg))
+            raise ChariowError(str(message))
     except requests.RequestException as exc:
-        logger.exception("Erreur réseau Chariow Conseil")
-        raise ConseilPaymentError("Chariow est momentanément indisponible.") from exc
+        logger.exception("Erreur réseau Chariow")
+        raise ChariowError("Chariow est momentanément indisponible.") from exc
 
     if not isinstance(payload, dict):
-        raise ConseilPaymentError("Réponse Chariow invalide.")
+        raise ChariowError("Réponse Chariow invalide.")
     return payload
 
 
-def initialize_conseil_payment(user, annual=False):
-    email = (user.email or getattr(getattr(user, "phone_account", None), "email", "")).strip()
-    try:
-        validate_email(email)
-    except ValidationError as exc:
-        raise ConseilPaymentError("Une adresse e-mail valide est requise pour payer Conseil Pro.") from exc
-
-    amount = 29000 if annual else 3000
+def initialize_subscription_payment(user, custom_email: str | None = None) -> dict:
+    reference = f"AGRILINK-{uuid.uuid4().hex[:24].upper()}"
+    amount = getattr(settings, "CHARIOW_SUBSCRIPTION_AMOUNT", 5000)
     currency = getattr(settings, "CHARIOW_CURRENCY", "XOF")
-    reference = f"CONSEIL-{uuid.uuid4().hex[:24].upper()}"
+    account = getattr(user, "phone_account", None)
+    if not account:
+        raise ChariowError("Compte d’authentification introuvable.")
+    phone = account.phone_e164 or ""
+    buyer_profile = getattr(user, "buyer_profile", None)
+
+    email = (custom_email or user.email or account.email or (buyer_profile.email if buyer_profile else "")).strip()
+
+    if email:
+        try:
+            validate_email(email)
+        except ValidationError:
+            email = ""
+
+    if not email:
+        clean_phone = re.sub(r"\D", "", phone) or str(user.pk)
+        email = f"user_{clean_phone}@agrilink.ci"
 
     payment = Payment.objects.create(
         user=user,
@@ -84,44 +104,41 @@ def initialize_conseil_payment(user, annual=False):
 
     api_key = getattr(settings, "CHARIOW_API_KEY", "")
     if not api_key and settings.DEBUG:
-        mock_url = f"http://127.0.0.1:8000/api/conseil/abonnement/?ref={reference}"
+        mock_url = f"http://127.0.0.1:8000/api/payments/subscription/status/?ref={reference}"
         payment.provider_response = {
             "checkout_url": mock_url,
-            "purpose": "conseil_subscription",
-            "annual": annual,
             "step": "payment",
+            "access_code": "DEV_MODE_ACCESS_CODE",
         }
         payment.save(update_fields=["provider_response", "updated_at"])
         return {
-            "reference": reference,
+            "reference": payment.reference,
             "authorization_url": mock_url,
             "checkout_url": mock_url,
-            "amount": amount,
-            "currency": currency,
+            "amount": payment.amount,
+            "currency": payment.currency,
             "dev_mode": True,
         }
 
-    product_id = (
-        getattr(settings, "CHARIOW_CONSEIL_ANNUAL_PRODUCT_ID", "")
-        if annual
-        else getattr(settings, "CHARIOW_CONSEIL_PRODUCT_ID", "")
-    )
+    product_id = getattr(settings, "CHARIOW_SELLER_PRODUCT_ID", "")
     if not product_id:
-        product_id = getattr(settings, "CHARIOW_SELLER_PRODUCT_ID", "prd_conseil_subscription")
+        raise ChariowError("CHARIOW_SELLER_PRODUCT_ID n'est pas configuré sur le serveur.")
 
     data = {
         "product_id": product_id,
         "email": email,
         "customer_email": email,
-        "first_name": user.first_name or "Abonné",
-        "last_name": user.last_name or "Conseil",
+        "first_name": user.first_name or "Vendeur",
+        "last_name": user.last_name or "AgriLink",
         "metadata": {
-            "purpose": "conseil_subscription",
             "reference": reference,
+            "purpose": "seller_subscription",
             "user_id": str(user.id),
-            "annual": annual,
+            "phone": phone,
         },
     }
+    if phone:
+        data["phone"] = phone
     callback_url = getattr(settings, "CHARIOW_CALLBACK_URL", "")
     if callback_url:
         data["callback_url"] = callback_url
@@ -134,6 +151,7 @@ def initialize_conseil_payment(user, annual=False):
         raise
 
     response_data = payload.get("data", payload)
+    # Dans Chariow, l'URL de paiement est dans data.payment.checkout_url ou data.checkout_url
     checkout_url = (
         response_data.get("payment", {}).get("checkout_url")
         or response_data.get("checkout_url")
@@ -142,26 +160,23 @@ def initialize_conseil_payment(user, annual=False):
     )
     transaction_id = str(response_data.get("id") or response_data.get("sale_id") or "")
 
-    payment.provider_response = {
-        "purpose": "conseil_subscription",
-        "annual": annual,
-        "checkout_url": checkout_url,
-        "raw": response_data,
-    }
+    payment.provider_response = response_data
     payment.transaction_id = transaction_id
     payment.paystack_transaction_id = transaction_id
     payment.save(update_fields=["provider_response", "transaction_id", "paystack_transaction_id", "updated_at"])
 
     return {
-        "reference": reference,
+        "reference": payment.reference,
         "authorization_url": checkout_url,
         "checkout_url": checkout_url,
-        "amount": amount,
+        "transaction_id": transaction_id,
+        "amount": payment.amount,
         "currency": payment.currency,
     }
 
 
-def _extract_sale_from_response(payload, reference=""):
+def _extract_sale_from_response(payload: dict, reference: str = "") -> dict:
+    """Extrait l'objet de vente (dict) correspondant à la référence dans les données Chariow."""
     if not isinstance(payload, dict):
         return {}
     data = payload.get("data", payload)
@@ -183,19 +198,20 @@ def _extract_sale_from_response(payload, reference=""):
 
 
 @transaction.atomic
-def verify_conseil_payment(user, reference):
+def verify_and_activate_payment(user, reference: str) -> dict:
     try:
-        payment = Payment.objects.select_for_update().get(user=user, reference=reference)
+        payment = Payment.objects.select_for_update().get(reference=reference, user=user)
     except Payment.DoesNotExist as exc:
-        raise ConseilPaymentError("Référence de paiement inconnue.") from exc
+        raise ChariowError("Référence de paiement inconnue pour ce compte.") from exc
 
     if payment.status == Payment.Status.SUCCESS:
-        subscription = ConseilSubscription.objects.get(user=user)
+        subscription = SellerSubscription.objects.get(user=user)
         return {
             "status": "active",
+            "role": getattr(user.phone_account, "role", ""),
             "starts_at": subscription.starts_at,
             "ends_at": subscription.ends_at,
-            "reference": reference,
+            "reference": payment.reference,
             "channel": payment.channel,
             "idempotent": True,
         }
@@ -204,18 +220,19 @@ def verify_conseil_payment(user, reference):
     if not api_key and settings.DEBUG:
         sale_data = {
             "status": "completed",
-            "reference": reference,
+            "reference": payment.reference,
             "amount": payment.amount,
             "currency": payment.currency,
             "channel": "dev_mode",
-            "id": "DEV_MODE_CONSEIL_SALE",
+            "id": "DEV_MODE_CHARIOW_SALE",
         }
     else:
+        # Recherche par référence via l'endpoint des ventes Chariow
         if payment.transaction_id:
             try:
                 sale_res = _request("GET", f"/sales/{payment.transaction_id}")
                 sale_data = _extract_sale_from_response(sale_res, reference)
-            except ConseilPaymentError:
+            except ChariowError:
                 sale_res = _request("GET", f"/sales?search={reference}")
                 sale_data = _extract_sale_from_response(sale_res, reference)
         else:
@@ -226,36 +243,72 @@ def verify_conseil_payment(user, reference):
     sale_id = str(sale_data.get("id", ""))
     channel = str(sale_data.get("payment_method", sale_data.get("channel", "chariow")))
 
+    payment.provider_response = sale_data
+    payment.channel = channel
+    payment.transaction_id = sale_id
+    payment.paystack_transaction_id = sale_id
+
+    # Les statuts de succès sur Chariow sont 'completed' ou 'settled'
     if sale_status not in ["completed", "settled", "success"]:
         payment.status = Payment.Status.FAILED
-        payment.save(update_fields=["status", "updated_at"])
-        raise ConseilPaymentError("Le paiement Conseil Pro n’est pas valide ou n'est pas complété.")
+        payment.save(update_fields=["status", "channel", "transaction_id", "paystack_transaction_id", "provider_response", "updated_at"])
+        raise ChariowError(f"Le paiement Chariow n’est pas complété (statut: {sale_status or 'inconnu'}).")
 
     now = timezone.now()
     payment.status = Payment.Status.SUCCESS
     payment.paid_at = now
-    payment.channel = channel
-    payment.transaction_id = sale_id
-    payment.paystack_transaction_id = sale_id
-    payment.provider_response = sale_data
     payment.save(update_fields=["status", "paid_at", "channel", "transaction_id", "paystack_transaction_id", "provider_response", "updated_at"])
 
-    days = 365 if payment.amount >= 29000 else 30
-    old = getattr(user, "conseil_subscription", None)
-    starts = max(now, old.ends_at) if old and old.is_active else now
-    subscription, _ = ConseilSubscription.objects.update_or_create(
+    try:
+        subscription = SellerSubscription.objects.select_for_update().get(user=user)
+        starts_at = max(now, subscription.ends_at)
+    except SellerSubscription.DoesNotExist:
+        subscription = None
+        starts_at = now
+
+    sub_days = getattr(settings, "CHARIOW_SUBSCRIPTION_DAYS", 30)
+    ends_at = starts_at + timedelta(days=sub_days)
+    subscription, _ = SellerSubscription.objects.update_or_create(
         user=user,
         defaults={
             "payment": payment,
-            "status": ConseilSubscription.Status.ACTIVE,
-            "starts_at": starts,
-            "ends_at": starts + timedelta(days=days),
+            "status": SellerSubscription.Status.ACTIVE,
+            "starts_at": starts_at,
+            "ends_at": ends_at,
         },
     )
+    notify_seller_subscription_confirmed(user, subscription, payment.reference)
+    account = getattr(user, "phone_account", None)
+    if not account or not (account.phone_verified or account.email_verified):
+        raise ChariowError("Un téléphone ou une adresse e-mail vendeur vérifié est requis.")
+    account.role = PhoneAccount.Role.SELLER
+    account.save(update_fields=["role", "updated_at"])
     return {
         "status": "active",
+        "role": account.role,
         "starts_at": subscription.starts_at,
         "ends_at": subscription.ends_at,
-        "reference": reference,
+        "reference": payment.reference,
         "channel": payment.channel,
     }
+
+
+def verify_webhook_signature(raw_body: bytes, signature: str) -> bool:
+    """
+    Vérifie la signature HMAC-SHA256 envoyée par les Pulses de Chariow (header x-chariow-signature).
+    Le header peut être sous forme 'sha256=<hex>' ou directement '<hex>'.
+    """
+    secret = getattr(settings, "CHARIOW_WEBHOOK_SECRET", "") or getattr(settings, "CHARIOW_API_KEY", "")
+    if not secret or not signature:
+        return False
+
+    clean_signature = signature.strip()
+    if clean_signature.startswith("sha256="):
+        clean_signature = clean_signature[len("sha256="):]
+
+    expected = hmac.new(
+        secret.encode("utf-8"),
+        raw_body,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, clean_signature)

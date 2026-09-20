@@ -169,40 +169,37 @@ L’écran « Connexion AgriLink CI » permet de sélectionner « Acheteur » ou
 [1]: https://www.twilio.com/docs/verify/api "Twilio Verify API"
 [2]: https://developer.vonage.com/en/verify/getting-started "Vonage Verify API — Getting Started"
 
-## Abonnement vendeur avec Paystack
+## Abonnement vendeur avec Chariow
 
-L’inscription vendeur est maintenant conditionnée à un abonnement actif. Le vendeur doit d’abord se connecter par SMS avec le rôle « Vendeur », initialiser le paiement Paystack, terminer le paiement dans la page de checkout, puis vérifier la référence Paystack depuis l’application Kivy. Le backend bloque ensuite les créations et modifications de fiches vendeurs lorsque l’abonnement n’est pas actif.
+L’inscription vendeur est conditionnée à un abonnement actif (ou au forfait gratuit). Le vendeur s'authentifie, initialise le paiement Chariow, effectue le règlement sur la page de paiement sécurisée Chariow (Mobile Money Orange, MTN, Wave, Moov ou carte bancaire), puis valide sa référence depuis l’application Kivy ou automatiquement via webhook (Pulse). Le backend bloque les créations et modifications de fiches vendeurs lorsque l’abonnement n’est pas actif.
 
-Paystack est appelé uniquement depuis Django : la clé secrète ne doit jamais être placée dans Kivy. Le flux utilise une référence unique, une initialisation serveur, une vérification serveur par référence et un webhook signé. Le montant local est configurable par `PAYSTACK_SUBSCRIPTION_AMOUNT`, sa durée par `PAYSTACK_SUBSCRIPTION_DAYS` et la devise par `PAYSTACK_CURRENCY`. Le multiplicateur `PAYSTACK_AMOUNT_MULTIPLIER` doit correspondre à l’unité attendue par la devise activée dans votre compte Paystack.
+L'API Chariow est appelée exclusivement depuis Django : la clé d'API ne doit jamais être exposée dans l'application mobile Kivy. Le flux repose sur une référence unique, une initialisation serveur (`POST /v1/checkout`), une vérification serveur (`GET /v1/sales`) et un webhook signé HMAC-SHA256 (`x-chariow-signature`).
 
 | Route | Méthode | Rôle |
 | --- | --- | --- |
-| `/api/payments/subscription/initialize/` | POST authentifié | Créer une transaction Paystack et retourner l’URL de checkout |
+| `/api/payments/subscription/initialize/` | POST authentifié | Créer une commande Chariow et retourner l’URL de checkout |
 | `/api/payments/subscription/verify/` | POST authentifié | Vérifier la référence et activer l’abonnement |
 | `/api/payments/subscription/status/` | GET authentifié | Consulter l’état et la date d’expiration |
-| `/api/payments/paystack/webhook/` | POST public signé | Recevoir les événements Paystack et synchroniser le paiement |
+| `/api/payments/chariow/webhook/` | POST public signé | Recevoir les événements Chariow Pulses et synchroniser le paiement |
 
-Pour activer Paystack en test :
+Pour configurer Chariow en environnement :
 
 ```bash
-export PAYSTACK_SECRET_KEY="sk_test_..."
-export PAYSTACK_PUBLIC_KEY="pk_test_..."
-export PAYSTACK_CURRENCY="XOF"
-export PAYSTACK_SUBSCRIPTION_AMOUNT="5000"
-export PAYSTACK_AMOUNT_MULTIPLIER="1"
-export PAYSTACK_SUBSCRIPTION_DAYS="30"
-export PAYSTACK_BASE_URL="https://api.paystack.co"
+export CHARIOW_API_KEY="sk_test_..."
+export CHARIOW_WEBHOOK_SECRET="whsec_..."
+export CHARIOW_BASE_URL="https://api.chariow.com/v1"
+export CHARIOW_CURRENCY="XOF"
+export CHARIOW_SELLER_PRODUCT_ID="prd_vendeur_mensuel"
+export CHARIOW_SUBSCRIPTION_AMOUNT="5000"
+export CHARIOW_SUBSCRIPTION_DAYS="30"
 ```
 
-Paystack documente l’initialisation d’une transaction avec une clé secrète côté serveur et la vérification par référence [3]. Les cartes sont disponibles sur les comptes Paystack, tandis que les autres canaux dépendent du pays et de l’éligibilité du compte ; la documentation indique que le mobile money est disponible pour les entreprises en Côte d’Ivoire [4]. Les abonnements récurrents Paystack ne doivent pas être supposés disponibles pour tous les moyens mobiles : pour ce MVP, le paiement initial active une période locale de 30 jours [5].
+Le webhook (Pulse) doit être configuré dans le tableau de bord Chariow avec l’URL publique `https://votre-domaine/api/payments/chariow/webhook/`. En développement local avec `DEBUG=True`, si aucune clé API n'est configurée, un mode dev automatique permet de tester les flux sans passerelle externe.
 
-Le webhook doit être configuré dans le tableau de bord Paystack avec l’URL publique `https://votre-domaine/api/payments/paystack/webhook/`. En développement local, utilisez un tunnel HTTPS ou testez l’activation avec la route de vérification et les clés de test.
+### Références Chariow
 
-### Références Paystack
-
-[3]: https://paystack.com/docs/api/transaction/ "Paystack Transaction API"
-[4]: https://paystack.com/docs/payments/payment-channels/ "Paystack Payment Channels"
-[5]: https://paystack.com/docs/payments/subscriptions/ "Paystack Subscriptions"
+[3]: https://chariow.dev "Chariow Developer Documentation"
+[4]: https://chariow.com "Chariow Official Platform"
 
 ## Authentification acheteur et recommandations locales
 
@@ -294,7 +291,7 @@ DATABASE_URL=${{Postgres.DATABASE_URL}}
 
 La référence `${{Postgres.DATABASE_URL}}` doit correspondre au nom du service PostgreSQL Railway. Railway fournit automatiquement `PORT`; Gunicorn écoute cette variable sur `0.0.0.0`.
 
-Pour activer les services externes en production, ajoutez également les variables Twilio, Paystack et Firebase documentées dans `backend/.env.example`. Les clés secrètes doivent être enregistrées dans les variables Railway et non dans GitHub ou dans l’APK Kivy.
+Pour activer les services externes en production, ajoutez également les variables Twilio, Chariow et Firebase documentées dans `backend/.env.example`. Les clés secrètes doivent être enregistrées dans les variables Railway et non dans GitHub ou dans l’APK Kivy.
 
 ### Contrôles après déploiement
 

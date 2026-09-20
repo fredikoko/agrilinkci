@@ -1,4 +1,5 @@
 import json
+import logging
 
 from django.utils import timezone
 from rest_framework import permissions, status
@@ -8,7 +9,14 @@ from rest_framework.views import APIView
 from .auth_permissions import IsVerifiedAccount
 from .models import Payment, PhoneAccount, SellerSubscription
 from conseil.payment_service import ConseilPaymentError, verify_conseil_payment
-from .paystack_service import PaystackError, initialize_subscription_payment, verify_and_activate_payment, verify_webhook_signature
+from .chariow_service import (
+    ChariowError,
+    initialize_subscription_payment,
+    verify_and_activate_payment,
+    verify_webhook_signature,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class SellerFreeActivateView(APIView):
@@ -30,10 +38,9 @@ class SubscriptionPaymentInitializeView(APIView):
         try:
             email = request.data.get("email") if isinstance(request.data, dict) else None
             result = initialize_subscription_payment(request.user, custom_email=email)
-        except PaystackError as exc:
+        except ChariowError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(result, status=status.HTTP_201_CREATED)
-
 
 
 class SubscriptionPaymentVerifyView(APIView):
@@ -42,10 +49,10 @@ class SubscriptionPaymentVerifyView(APIView):
     def post(self, request):
         reference = str(request.data.get("reference", "")).strip()
         if not reference:
-            return Response({"detail": "La référence Paystack est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "La référence Chariow est obligatoire."}, status=status.HTTP_400_BAD_REQUEST)
         try:
             result = verify_and_activate_payment(request.user, reference)
-        except PaystackError as exc:
+        except ChariowError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(result, status=status.HTTP_200_OK)
 
@@ -71,12 +78,20 @@ class SubscriptionStatusView(APIView):
         )
 
 
-class PaystackWebhookView(APIView):
+class ChariowWebhookView(APIView):
+    """
+    Point de terminaison pour recevoir les webhooks (Pulses) de Chariow.
+    Documentation : https://chariow.dev
+    """
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        signature = request.headers.get("x-paystack-signature", "")
+        signature = (
+            request.headers.get("x-chariow-signature")
+            or request.headers.get("x-signature")
+            or request.headers.get("x-paystack-signature", "")
+        )
         if not verify_webhook_signature(request.body, signature):
             return Response({"detail": "Signature invalide."}, status=status.HTTP_401_UNAUTHORIZED)
         try:
@@ -84,17 +99,36 @@ class PaystackWebhookView(APIView):
         except (UnicodeDecodeError, json.JSONDecodeError):
             return Response({"detail": "Payload JSON invalide."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if event.get("event") == "charge.success":
-            reference = event.get("data", {}).get("reference")
-            try:
-                payment = Payment.objects.get(reference=reference)
-                purpose = (payment.provider_response or {}).get("purpose")
-                event_purpose = event.get("data", {}).get("metadata", {}).get("purpose")
-                if purpose == "conseil_subscription" or event_purpose == "conseil_subscription":
-                    verify_conseil_payment(payment.user, reference)
-                else:
-                    verify_and_activate_payment(payment.user, reference)
-            except (Payment.DoesNotExist, PaystackError, ConseilPaymentError):
-                # Retourner 200 évite les retries infinis pour un événement connu mais non traitable.
-                pass
+        event_type = str(
+            request.headers.get("x-pulse-event")
+            or event.get("event")
+            or event.get("type", "")
+        ).lower()
+
+        # Événements de paiement réussi chez Chariow (ou charge.success)
+        if event_type in ["successful.sale", "sale.completed", "order.completed", "charge.success", ""]:
+            data = event.get("data", event)
+            metadata = data.get("metadata", {})
+            reference = (
+                metadata.get("reference")
+                or data.get("reference")
+                or event.get("reference")
+            )
+            if reference:
+                try:
+                    payment = Payment.objects.get(reference=reference)
+                    purpose = (payment.provider_response or {}).get("purpose")
+                    event_purpose = metadata.get("purpose")
+                    if purpose == "conseil_subscription" or event_purpose == "conseil_subscription":
+                        verify_conseil_payment(payment.user, reference)
+                    else:
+                        verify_and_activate_payment(payment.user, reference)
+                except (Payment.DoesNotExist, ChariowError, ConseilPaymentError) as exc:
+                    logger.warning("Erreur traitement webhook Chariow pour ref %s : %s", reference, exc)
+                    pass
+
         return Response({"received": True}, status=status.HTTP_200_OK)
+
+
+# Rétro-compatibilité pour les URLs existantes
+PaystackWebhookView = ChariowWebhookView

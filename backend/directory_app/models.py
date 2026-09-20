@@ -77,6 +77,7 @@ class Payment(models.Model):
     currency = models.CharField(max_length=8, default="XOF")
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
     channel = models.CharField(max_length=40, blank=True)
+    transaction_id = models.CharField(max_length=120, blank=True)
     paystack_transaction_id = models.CharField(max_length=80, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)
     provider_response = models.JSONField(default=dict, blank=True)

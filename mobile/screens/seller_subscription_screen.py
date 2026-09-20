@@ -27,8 +27,8 @@ class SellerSubscriptionScreen(BaseScreen):
         content.add_widget(self.make_label("Choisissez le plan adapté à votre activité agricole.", size=18, color=TEXT, height=58))
         content.add_widget(self.plan_card("VENDEUR GRATUIT", "0 FCFA / mois", ["Jusqu’à 10 produits", "Présence dans les résultats standards", "Gestion de vos produits et stocks", "Contact direct par téléphone et WhatsApp", "Pas de badge Pro", "Pas de promotions push"], free=True))
         content.add_widget(self.plan_card("VENDEUR PRO", "5 000 FCFA / mois", ["Produits illimités", "Affichage prioritaire dans les résultats", "Badge Vendeur Pro", "Alertes de stock", "Statistiques avancées", "15 promotions par mois", "Validation administrative de la fiche vendeur"], free=False))
-        content.add_widget(self.make_label("Paiement sécurisé : Orange Money, MTN MoMo, Wave ou carte bancaire via Paystack.", size=13, color=MUTED, height=48))
-        self.reference_input = TextInput(hint_text="Référence Paystack après paiement", multiline=False, size_hint_y=None, height=dp(40))
+        content.add_widget(self.make_label("Paiement sécurisé : Orange Money, MTN MoMo, Wave ou carte bancaire via Chariow.", size=13, color=MUTED, height=48))
+        self.reference_input = TextInput(hint_text="Référence Chariow après paiement", multiline=False, size_hint_y=None, height=dp(40))
         content.add_widget(self.reference_input)
         content.add_widget(self.make_button("J’ai payé — vérifier mon abonnement", self.verify_payment, height=42, color=(0.12, 0.50, 0.27, 1)))
         self.status_label = self.make_label("", size=13, color=MUTED, height=48)
@@ -69,23 +69,23 @@ class SellerSubscriptionScreen(BaseScreen):
             login.next_screen = "seller-subscription"
             self.manager.current = "login"
             return
-        self.set_status("Initialisation du paiement Paystack...")
+        self.set_status("Initialisation du paiement Chariow...")
         ApiClient.request("payments/subscription/initialize/", self._payment_initialized, self._payment_error, method="POST", payload={})
 
     def _payment_initialized(self, data: Any):
         self.payment_reference = data.get("reference", "")
         self.reference_input.text = self.payment_reference
-        url = data.get("authorization_url")
+        url = data.get("checkout_url") or data.get("authorization_url")
         if url:
             webbrowser.open(url)
             self.set_status("Paiement ouvert. Terminez-le puis revenez vérifier la référence.")
         else:
-            self.set_status("URL Paystack indisponible.", (0.7, 0.1, 0.1, 1))
+            self.set_status("URL Chariow indisponible.", (0.7, 0.1, 0.1, 1))
 
     def verify_payment(self, *_args):
         reference = self.reference_input.text.strip() or self.payment_reference
         if not reference:
-            self.set_status("Saisissez la référence Paystack après le paiement.", (0.7, 0.1, 0.1, 1))
+            self.set_status("Saisissez la référence Chariow après le paiement.", (0.7, 0.1, 0.1, 1))
             return
         ApiClient.request("payments/subscription/verify/", self._payment_verified, self._payment_error, method="POST", payload={"reference": reference})
 

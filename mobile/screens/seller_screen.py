@@ -55,7 +55,7 @@ class SellerScreen(BaseScreen):
         payment_row.add_widget(self.make_button("Payer l’abonnement", self.start_subscription_payment, height=42))
         payment_row.add_widget(self.make_button("Vérifier le paiement", self.verify_subscription_payment, height=42, color=(0.12, 0.50, 0.27, 1)))
         root.add_widget(payment_row)
-        self.payment_reference_input = TextInput(hint_text="Référence Paystack après paiement", multiline=False, size_hint_y=None, height=dp(40))
+        self.payment_reference_input = TextInput(hint_text="Référence Chariow après paiement", multiline=False, size_hint_y=None, height=dp(40))
         root.add_widget(self.payment_reference_input)
         self.name_input = TextInput(hint_text="Nom du vendeur ou de la coopérative", multiline=False, size_hint_y=None, height=dp(42))
         root.add_widget(self.name_input)
@@ -140,7 +140,7 @@ class SellerScreen(BaseScreen):
         self.subscription_status_label.color = PRIMARY if active else (0.7, 0.1, 0.1, 1)
 
     def start_subscription_payment(self, *_args) -> None:
-        self._set_subscription_status("Initialisation du paiement Paystack...", False)
+        self._set_subscription_status("Initialisation du paiement Chariow...", False)
         ApiClient.request(
             "payments/subscription/initialize/",
             self._payment_initialized,
@@ -151,17 +151,17 @@ class SellerScreen(BaseScreen):
     def _payment_initialized(self, data: Any) -> None:
         self.payment_reference = data.get("reference", "")
         self.payment_reference_input.text = self.payment_reference
-        authorization_url = data.get("authorization_url")
+        authorization_url = data.get("checkout_url") or data.get("authorization_url")
         if authorization_url:
             webbrowser.open(authorization_url)
             self._set_subscription_status("Paiement ouvert dans votre navigateur. Terminez-le puis cliquez sur Vérifier le paiement.", False)
         else:
-            self._set_subscription_status("URL Paystack introuvable.", False)
+            self._set_subscription_status("URL Chariow introuvable.", False)
 
     def verify_subscription_payment(self, *_args) -> None:
         reference = self.payment_reference_input.text.strip() or self.payment_reference
         if not reference:
-            self._set_subscription_status("Saisissez ou initialisez une référence Paystack.", False)
+            self._set_subscription_status("Saisissez ou initialisez une référence Chariow.", False)
             return
         self._set_subscription_status("Vérification du paiement...", False)
         ApiClient.request(
