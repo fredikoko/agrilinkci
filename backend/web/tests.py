@@ -219,3 +219,20 @@ class WebFrontendTests(TestCase):
         data = res.json()
         self.assertEqual(len(data.get("localities", [])), 1)
         self.assertEqual(data["localities"][0]["name"], "Abidjan")
+
+    def test_unauthenticated_redirects_and_login_aliases(self):
+        """Test que les pages protégées redirigent vers la page de connexion sans 404."""
+        # Non connecté accédant à l'espace prestataire
+        res_provider = self.client.get(reverse("web:provider-space"))
+        self.assertEqual(res_provider.status_code, 302)
+        self.assertIn("/auth/login/", res_provider.url)
+
+        # Non connecté accédant à l'abonnement conseil
+        res_conseil = self.client.get(reverse("web:conseil-subscription"))
+        self.assertEqual(res_conseil.status_code, 302)
+        self.assertIn("/auth/login/", res_conseil.url)
+
+        # Accès direct aux alias de connexion
+        self.assertEqual(self.client.get("/accounts/login/").status_code, 200)
+        self.assertEqual(self.client.get("/login/").status_code, 200)
+        self.assertEqual(self.client.get("/connexion/").status_code, 200)

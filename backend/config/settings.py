@@ -332,5 +332,11 @@ LOGGING = {
     },
 }
 
+# Configuration de l'authentification Web
+LOGIN_URL = "web:login"
+LOGIN_REDIRECT_URL = "web:home"
+LOGOUT_REDIRECT_URL = "web:home"
+
+
 
 

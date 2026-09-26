@@ -30,8 +30,15 @@ urlpatterns = [
 
     # Authentification & Compte
     path("auth/login/", views.login_view, name="login"),
+    path("login/", views.login_view, name="login-alias"),
+    path("connexion/", views.login_view, name="connexion-alias"),
+    path("accounts/login/", views.login_view, name="accounts-login-alias"),
     path("auth/signup/", views.signup_view, name="signup"),
+    path("signup/", views.signup_view, name="signup-alias"),
+    path("inscription/", views.signup_view, name="inscription-alias"),
     path("auth/logout/", views.logout_view, name="logout"),
+    path("logout/", views.logout_view, name="logout-alias"),
+    path("deconnexion/", views.logout_view, name="deconnexion-alias"),
     path("account/profile/", views.profile_view, name="profile"),
     path("account/favorites/", views.favorites_view, name="favorites"),
     path("account/favorites/toggle/", views.toggle_favorite, name="favorite-toggle"),
