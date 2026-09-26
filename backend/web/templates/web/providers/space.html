@@ -1,0 +1,163 @@
+{% extends "web/base.html" %}
+
+{% block title %}Espace Prestataire de Services — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gray-100 py-6 border-b border-gray-200">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">Espace Prestataire</h1>
+        <p class="text-sm text-gray-600 mt-1">Gérez votre profil public et la liste de vos prestations de services</p>
+    </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <!-- =================================================================== -->
+        <!-- PROFIL DU PRESTATAIRE -->
+        <!-- =================================================================== -->
+        <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+            <h2 class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100 flex items-center">
+                <i class="fa-solid fa-id-card mr-2 text-primary-900"></i>
+                Ma Fiche Prestataire
+            </h2>
+
+            <form method="POST" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="save_provider">
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nom commercial / Raison sociale</label>
+                    {{ form.name }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Type de prestation principale</label>
+                    {{ form.provider_type }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Description des matériels / compétences</label>
+                    {{ form.description }}
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Téléphone d'appel</label>
+                        {{ form.phone }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Numéro WhatsApp</label>
+                        {{ form.whatsapp_number }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Zone d'intervention (villes, communes...)</label>
+                    {{ form.intervention_zone }}
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Région</label>
+                        {{ form.region }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Localité</label>
+                        {{ form.locality }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Adresse ou quartier de base</label>
+                    {{ form.address }}
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-primary-900 hover:bg-primary-950 text-white font-bold rounded-2xl text-sm shadow transition mt-2">
+                    Enregistrer les modifications
+                </button>
+            </form>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- SERVICES & TARIFS PROPOSÉS -->
+        <!-- =================================================================== -->
+        <div class="space-y-6">
+            
+            {% if provider %}
+            <!-- Formulaire ajout de service -->
+            <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100 flex items-center">
+                    <i class="fa-solid fa-plus-circle mr-2 text-primary-900"></i>
+                    Ajouter un service ou tarif
+                </h2>
+
+                <form method="POST" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="add_service">
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Intitulé du service</label>
+                        {{ service_form.title }}
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Prix (FCFA)</label>
+                            {{ service_form.rate }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Unité facturée</label>
+                            {{ service_form.unit }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Description (optionnel)</label>
+                        {{ service_form.description }}
+                    </div>
+
+                    <button type="submit" class="w-full py-2.5 bg-accent hover:bg-orange-600 text-white font-bold rounded-xl text-xs shadow transition">
+                        Ajouter ce service
+                    </button>
+                </form>
+            </div>
+
+            <!-- Liste des services déjà créés -->
+            <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+                <h3 class="font-bold text-gray-900 text-sm mb-3">Mes services actifs ({{ services|length }})</h3>
+                <div class="space-y-3">
+                    {% for s in services %}
+                    <div class="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between">
+                        <div>
+                            <h4 class="font-bold text-xs text-gray-800">{{ s.title }}</h4>
+                            <p class="text-[11px] text-gray-500">{{ s.description|default:"" }}</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="font-extrabold text-sm text-primary-900">{{ s.rate|floatformat:0 }} FCFA</span>
+                            <span class="text-[10px] text-gray-500 block">/ {{ s.unit }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 italic">Aucun service ajouté pour l'instant.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {% else %}
+            <div class="bg-amber-50 rounded-3xl border border-amber-200 p-6 text-amber-900">
+                <i class="fa-solid fa-circle-info text-2xl text-amber-600 mb-2"></i>
+                <h3 class="font-bold text-sm">Créez votre fiche prestataire d'abord</h3>
+                <p class="text-xs text-amber-800 mt-1">
+                    Renseignez vos coordonnées sur le formulaire à gauche pour débloquer l'ajout de services et de tarifs unitaires.
+                </p>
+            </div>
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "web/base.html" %}
+
+{% block title %}Choisir mon Forfait Vendeur — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-primary-950 via-primary-900 to-emerald-950 text-white py-12 px-4 sm:px-6 lg:px-8 text-center">
+    <div class="max-w-3xl mx-auto">
+        <span class="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-white/10 text-amber-300 inline-block mb-3 border border-white/10">
+            <i class="fa-solid fa-crown mr-1"></i> Formules Vendeur
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">Développez votre commerce agricole</h1>
+        <p class="mt-3 text-sm sm:text-base text-primary-100">
+            Choisissez la formule adaptée à votre activité pour toucher des milliers d'acheteurs dans toute la Côte d'Ivoire.
+        </p>
+    </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+
+    {% if is_active %}
+    <div class="p-6 rounded-3xl bg-green-50 border-2 border-green-300 text-green-900 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-green-500 text-white flex items-center justify-center text-2xl shadow">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <h3 class="font-extrabold text-base">Votre badge VENDEUR PRO est actif !</h3>
+                <p class="text-xs text-green-700 mt-0.5">
+                    Abonnement actif jusqu'au {{ seller_sub.date_fin|date:"d F Y" }}
+                </p>
+            </div>
+        </div>
+        <a href="{% url 'web:seller-dashboard' %}" class="px-5 py-2.5 bg-primary-900 text-white font-bold text-xs rounded-xl shadow">
+            Accéder à mon tableau de bord
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Cartes comparatives -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Formule Gratuite -->
+        <div class="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Formule Standard</span>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700">Toujours Gratuit</span>
+                </div>
+
+                <div class="mt-4">
+                    <span class="text-4xl font-black text-gray-900">0</span>
+                    <span class="text-sm font-semibold text-gray-500">FCFA</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Idéal pour démarrer et tester la visibilité</p>
+
+                <ul class="mt-6 space-y-3 text-xs sm:text-sm text-gray-700">
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Fiche vendeur dans l'annuaire public</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Jusqu'à 5 produits au catalogue</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Bouton d'appel direct</li>
+                    <li class="flex items-center text-gray-400"><i class="fa-solid fa-xmark mr-2.5"></i> Pas de badge Vérifié / Pro</li>
+                    <li class="flex items-center text-gray-400"><i class="fa-solid fa-xmark mr-2.5"></i> Positionnement standard dans les recherches</li>
+                </ul>
+            </div>
+
+            <form method="POST" class="mt-8">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="free">
+                <button type="submit" class="w-full py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-2xl text-sm transition">
+                    Activer la formule gratuite
+                </button>
+            </form>
+        </div>
+
+        <!-- Formule Vendeur Pro -->
+        <div class="bg-gradient-to-b from-amber-50/50 to-white rounded-3xl border-2 border-amber-400 p-8 shadow-md hover:shadow-xl transition flex flex-col justify-between relative">
+            <span class="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full text-xs font-black bg-accent text-white shadow uppercase tracking-wider">
+                Recommandé
+            </span>
+
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-800">Formule Pro</span>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">Mensuel</span>
+                </div>
+
+                <div class="mt-4">
+                    <span class="text-4xl font-black text-gray-900">5 000</span>
+                    <span class="text-sm font-semibold text-gray-500">FCFA / mois</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Multipliez vos ventes et gagnez la confiance des acheteurs</p>
+
+                <ul class="mt-6 space-y-3 text-xs sm:text-sm text-gray-700">
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> <strong>Badge Officiel Vendeur Pro</strong></li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> <strong>Positionnement prioritaire</strong> en tête de liste</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Produits & stocks illimités</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Statistiques précises des vues et appels</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Contact WhatsApp direct en 1 clic</li>
+                </ul>
+            </div>
+
+            <form method="POST" class="mt-8">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="pro">
+                <button type="submit" class="w-full py-3.5 bg-accent hover:bg-orange-600 text-white font-extrabold rounded-2xl text-sm shadow-md transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-crown text-amber-300"></i>
+                    <span>Souscrire Vendeur Pro (5 000 FCFA)</span>
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- Sécurisation Chariow -->
+    <div class="p-6 rounded-2xl bg-white border border-gray-200 text-center space-y-3">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Paiement 100% Sécurisé via Chariow</h4>
+        <div class="flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-gray-600">
+            <span class="px-3 py-1 bg-gray-100 rounded-lg">Orange Money</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg">MTN MoMo</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg">Wave</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg">Moov Money</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg">Carte Visa / Mastercard</span>
+        </div>
+        <p class="text-[11px] text-gray-400">Activation automatique et instantanée dès paiement.</p>
+    </div>
+
+</div>
+{% endblock %}

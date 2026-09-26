@@ -1,0 +1,234 @@
+{% extends "web/base.html" %}
+
+{% block title %}Gestion des Stocks & Inventaire — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gray-100 py-6 border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <nav class="flex items-center space-x-2 text-xs text-gray-500 mb-2">
+                    <a href="{% url 'web:seller-dashboard' %}" class="hover:text-primary-900">Espace Vendeur</a>
+                    <span>/</span>
+                    <span class="text-gray-800 font-semibold">Gestion des stocks</span>
+                </nav>
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">Gestion des Stocks</h1>
+                <p class="text-sm text-gray-600 mt-1">Ajoutez des produits, ajustez les quantités et tracez les entrées/sorties</p>
+            </div>
+
+            <button onclick="document.getElementById('add-product-modal').classList.remove('hidden')" 
+                    class="px-5 py-2.5 bg-primary-900 hover:bg-primary-950 text-white font-bold text-xs sm:text-sm rounded-xl shadow transition flex items-center space-x-2">
+                <i class="fa-solid fa-plus-circle"></i>
+                <span>Ajouter un produit</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- ======================================================================= -->
+    <!-- LISTE DES ARTICLES EN STOCK -->
+    <!-- ======================================================================= -->
+    <div class="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm">
+        <div class="p-6 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-base font-bold text-gray-900">
+                Catalogue de produits ({{ stock_items|length }})
+            </h2>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs sm:text-sm text-gray-600">
+                <thead class="bg-gray-50 text-[11px] font-bold uppercase text-gray-400 border-b border-gray-100">
+                    <tr>
+                        <th class="px-6 py-3.5">Produit</th>
+                        <th class="px-6 py-3.5">Filière</th>
+                        <th class="px-6 py-3.5">Prix unitaire</th>
+                        <th class="px-6 py-3.5">Stock disponible</th>
+                        <th class="px-6 py-3.5 text-right">Actions rapides</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for item in stock_items %}
+                    <tr class="hover:bg-gray-50 transition">
+                        <td class="px-6 py-4 font-bold text-gray-900">
+                            {{ item.product.name }}
+                        </td>
+                        <td class="px-6 py-4 text-gray-500">
+                            {{ item.product.category.name|default:"Général" }}
+                        </td>
+                        <td class="px-6 py-4 font-extrabold text-primary-900">
+                            {{ item.price_note|default:"Non renseigné" }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if item.quantity_available > 0 %}
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800">
+                                    {{ item.quantity_available|floatformat:0 }} {{ item.product.unit }}
+                                </span>
+                            {% else %}
+                                <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-red-100 text-red-800">
+                                    Épuisé (0 {{ item.product.unit }})
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <button onclick="openMovementModal({{ item.id }}, '{{ item.product.name|escapejs }}', '{{ item.product.unit|escapejs }}')" 
+                                    class="px-3 py-1.5 bg-gray-100 hover:bg-primary-900 hover:text-white rounded-lg text-xs font-semibold text-gray-700 transition">
+                                <i class="fa-solid fa-right-left mr-1"></i> Mouvement
+                            </button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="px-6 py-12 text-center text-gray-400">
+                            Aucun produit n'est actuellement configuré dans votre stock.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- HISTORIQUE DES DERNIERS MOUVEMENTS DE STOCK -->
+    <!-- ======================================================================= -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+        <h3 class="text-base font-bold text-gray-900 mb-4 flex items-center">
+            <i class="fa-solid fa-clock-rotate-left mr-2 text-primary-900"></i>
+            Historique récent des mouvements d'inventaire
+        </h3>
+
+        <div class="space-y-3">
+            {% for m in recent_movements %}
+            <div class="p-3.5 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-between text-xs">
+                <div class="flex items-center space-x-3">
+                    <span class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs {% if m.movement_type == 'in' %}bg-green-100 text-green-700{% else %}bg-orange-100 text-orange-700{% endif %}">
+                        {% if m.movement_type == 'in' %}+{% else %}-{% endif %}
+                    </span>
+                    <div>
+                        <span class="font-bold text-gray-900">{{ m.stock.product.name }}</span>
+                        <span class="text-gray-400 block text-[11px]">{{ m.reason|default:"Mise à jour standard" }}</span>
+                    </div>
+                </div>
+
+                <div class="text-right">
+                    <span class="font-extrabold {% if m.movement_type == 'in' %}text-green-700{% else %}text-orange-700{% endif %}">
+                        {% if m.movement_type == 'in' %}+{% else %}-{% endif %}{{ m.quantity|floatformat:0 }} {{ m.stock.unit }}
+                    </span>
+                    <span class="text-gray-400 block text-[10px]">{{ m.created_at|date:"d M Y, H:i" }}</span>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-xs text-gray-400 italic">Aucun mouvement enregistré récemment.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+
+<!-- =========================================================================== -->
+<!-- MODAL AJOUT DE PRODUIT -->
+<!-- =========================================================================== -->
+<div id="add-product-modal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-lg rounded-3xl p-6 space-y-4 shadow-xl">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+            <h3 class="font-bold text-gray-900 text-base">Ajouter un produit au stock</h3>
+            <button onclick="document.getElementById('add-product-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_product">
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Sélectionner le produit</label>
+                {{ add_product_form.product }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Indication de prix</label>
+                {{ add_product_form.price_note }}
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Stock initial</label>
+                    {{ add_product_form.quantity_available }}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Seuil d'alerte</label>
+                    {{ add_product_form.alert_threshold }}
+                </div>
+            </div>
+
+            <div class="pt-3 flex space-x-3">
+                <button type="submit" class="flex-1 py-3 bg-primary-900 text-white font-bold rounded-xl text-sm shadow">
+                    Enregistrer au catalogue
+                </button>
+                <button type="button" onclick="document.getElementById('add-product-modal').classList.add('hidden')" class="px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">
+                    Annuler
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- =========================================================================== -->
+<!-- MODAL MOUVEMENT DE STOCK (ENTRÉE / SORTIE) -->
+<!-- =========================================================================== -->
+<div id="movement-modal" class="fixed inset-0 z-50 hidden bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="bg-white w-full max-w-md rounded-3xl p-6 space-y-4 shadow-xl">
+        <div class="flex items-center justify-between pb-3 border-b border-gray-100">
+            <h3 class="font-bold text-gray-900 text-base">Ajuster le stock</h3>
+            <button onclick="document.getElementById('movement-modal').classList.add('hidden')" class="text-gray-400 hover:text-gray-700">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <p class="text-xs text-gray-500" id="modal-product-name"></p>
+
+        <form method="POST" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="record_movement">
+            <input type="hidden" name="stock_id" id="modal-stock-id" value="">
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Type de mouvement</label>
+                {{ movement_form.movement_type }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Quantité</label>
+                {{ movement_form.quantity }}
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Motif ou référence</label>
+                {{ movement_form.reason }}
+            </div>
+
+            <div class="pt-3 flex space-x-3">
+                <button type="submit" class="flex-1 py-3 bg-primary-900 text-white font-bold rounded-xl text-sm shadow">
+                    Valider le mouvement
+                </button>
+                <button type="button" onclick="document.getElementById('movement-modal').classList.add('hidden')" class="px-4 py-3 bg-gray-100 text-gray-700 font-semibold rounded-xl text-sm">
+                    Annuler
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function openMovementModal(stockId, productName, unit) {
+        document.getElementById('modal-stock-id').value = stockId;
+        document.getElementById('modal-product-name').textContent = `Produit : ${productName} (Unité : ${unit})`;
+        document.getElementById('movement-modal').classList.remove('hidden');
+    }
+</script>
+{% endblock %}

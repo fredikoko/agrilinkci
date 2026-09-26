@@ -1,0 +1,453 @@
+{% extends "web/base.html" %}
+
+{% block title %}AgriLink CI — Première Plateforme Agricole & Intrants de Côte d'Ivoire{% endblock %}
+
+{% block content %}
+<!-- ======================================================================= -->
+<!-- HERO SECTION & RECHERCHE RAPIDE -->
+<!-- ======================================================================= -->
+<section class="relative bg-gradient-to-br from-primary-900 via-primary-800 to-primary-950 text-white py-12 md:py-16 px-4 sm:px-6 lg:px-8 overflow-hidden rounded-b-3xl shadow-xl">
+    <div class="relative max-w-5xl mx-auto text-center">
+        <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur border border-white/20 text-xs sm:text-sm font-medium mb-4">
+            <span class="w-2 h-2 rounded-full bg-accent animate-pulse"></span>
+            <span>Le réseau agricole direct des producteurs et commerçants ivoiriens</span>
+        </div>
+        
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
+            Trouvez des produits frais, semences et matériels près de chez vous
+        </h1>
+        <p class="mt-4 text-base sm:text-lg text-primary-100 max-w-2xl mx-auto">
+            Connectez-vous directement avec les vendeurs vérifiés, suivez les cours des marchés et bénéficiez de conseils agronomiques certifiés.
+        </p>
+
+        <!-- Barre de recherche avancée intégrée -->
+        <div class="mt-8 max-w-3xl mx-auto bg-white rounded-2xl p-2 sm:p-3 shadow-2xl text-gray-800">
+            <form action="{% url 'web:vendor-list' %}" method="GET" class="grid grid-cols-1 sm:grid-cols-12 gap-2 sm:gap-3">
+                <!-- Mot clé -->
+                <div class="sm:col-span-5 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </div>
+                    <input type="text" name="q" value="{{ search_query }}" placeholder="Produit (manioc, maïs, engrais...)" 
+                           class="w-full pl-9 pr-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-700 focus:bg-white transition">
+                </div>
+
+                <!-- Région -->
+                <div class="sm:col-span-4 relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <select name="region" id="hero-region-select" class="w-full pl-9 pr-8 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-primary-700 focus:bg-white transition appearance-none">
+                        <option value="">Toute la Côte d'Ivoire</option>
+                        {% for reg in regions %}
+                            <option value="{{ reg.id }}" {% if selected_region == reg.id|stringformat:"s" %}selected{% endif %}>{{ reg.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Bouton Chercher -->
+                <div class="sm:col-span-3">
+                    <button type="submit" class="w-full h-full py-2.5 px-4 bg-primary-900 hover:bg-primary-950 text-white font-semibold rounded-xl text-sm flex items-center justify-center space-x-2 transition shadow-md hover:shadow-lg">
+                        <i class="fa-solid fa-search"></i>
+                        <span>Rechercher</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Badges d'accès rapide -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs sm:text-sm">
+            <span class="text-primary-200">Recherches populaires :</span>
+            <a href="{% url 'web:vendor-list' %}?q=Cacao" class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition border border-white/15">Cacao</a>
+            <a href="{% url 'web:vendor-list' %}?q=Manioc" class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition border border-white/15">Manioc</a>
+            <a href="{% url 'web:vendor-list' %}?q=Engrais" class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition border border-white/15">Engrais NPK</a>
+            <a href="{% url 'web:vendor-list' %}?q=Tomate" class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition border border-white/15">Tomates</a>
+            <a href="{% url 'web:provider-list' %}?type=tractor" class="px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition border border-white/15"><i class="fa-solid fa-tractor mr-1"></i>Tracteurs</a>
+        </div>
+    </div>
+</section>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-12">
+
+    <!-- ======================================================================= -->
+    <!-- ALERTES PHYTOSANITAIRES & METEO ACTIVES -->
+    <!-- ======================================================================= -->
+    {% if active_alerts %}
+    <div class="space-y-3">
+        {% for alert in active_alerts %}
+        <div class="flex items-start p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 shadow-sm transition hover:shadow-md">
+            <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0 mr-3.5">
+                {% if alert.niveau == 'urgent' or alert.niveau == 'critique' %}
+                    <i class="fa-solid fa-triangle-exclamation text-xl text-red-600"></i>
+                {% else %}
+                    <i class="fa-solid fa-cloud-sun-rain text-xl text-amber-600"></i>
+                {% endif %}
+            </div>
+            <div class="flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-bold text-sm sm:text-base">{{ alert.titre }}</span>
+                    <span class="text-xs px-2 py-0.5 rounded-full {% if alert.niveau == 'critique' %}bg-red-200 text-red-800{% else %}bg-amber-200 text-amber-800{% endif %} font-semibold uppercase">
+                        {{ alert.get_niveau_display|default:alert.niveau }}
+                    </span>
+                    {% if alert.region %}
+                        <span class="text-xs text-amber-700"><i class="fa-solid fa-map-pin mr-1"></i>{{ alert.region.name }}</span>
+                    {% endif %}
+                </div>
+                <p class="text-xs sm:text-sm text-amber-800 mt-1">{{ alert.message }}</p>
+            </div>
+            <a href="{% url 'web:notifications' %}" class="text-xs font-semibold text-amber-800 hover:text-amber-950 underline ml-2 flex-shrink-0">
+                Détails
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ======================================================================= -->
+    <!-- FILIÈRES & CATÉGORIES AGRICOLES (PILLS DÉFILANTES) -->
+    <!-- ======================================================================= -->
+    <section>
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Catégories Agricoles</h2>
+                <p class="text-xs sm:text-sm text-gray-500">Explorez par type de production et d'équipement</p>
+            </div>
+            <a href="{% url 'web:vendor-list' %}" class="text-xs sm:text-sm font-semibold text-primary-900 hover:text-primary-700 flex items-center">
+                Tout voir <i class="fa-solid fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+
+        <div class="flex overflow-x-auto gap-3 pb-3 hide-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+            <a href="{% url 'web:vendor-list' %}" class="flex-shrink-0 px-4 py-2.5 rounded-2xl bg-primary-900 text-white text-xs sm:text-sm font-semibold flex items-center space-x-2 shadow-sm">
+                <i class="fa-solid fa-border-all"></i>
+                <span>Tous les produits</span>
+            </a>
+            {% for cat in categories %}
+            <a href="{% url 'web:vendor-list' %}?category={{ cat.id }}" class="flex-shrink-0 px-4 py-2.5 rounded-2xl bg-white border border-gray-200 text-gray-700 hover:border-primary-900 hover:text-primary-900 transition text-xs sm:text-sm font-medium flex items-center space-x-2 shadow-sm">
+                {% if cat.icon %}
+                    <span>{{ cat.icon }}</span>
+                {% else %}
+                    <i class="fa-solid fa-leaf text-primary-600"></i>
+                {% endif %}
+                <span>{{ cat.name }}</span>
+            </a>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- VENDEURS RECOMMANDÉS & VÉRIFIÉS -->
+    <!-- ======================================================================= -->
+    <section>
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Vendeurs Recommandés</h2>
+                <p class="text-xs sm:text-sm text-gray-500">Producteurs, coopératives et magasins vérifiés</p>
+            </div>
+            <a href="{% url 'web:vendor-list' %}" class="text-xs sm:text-sm font-semibold text-primary-900 hover:text-primary-700 flex items-center">
+                Voir tous les vendeurs <i class="fa-solid fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {% for vendor in featured_vendors %}
+            <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition flex flex-col justify-between group">
+                <div>
+                    <!-- En-tête de carte -->
+                    <div class="p-4 sm:p-5 pb-3">
+                        <div class="flex items-start justify-between">
+                            <div class="w-12 h-12 rounded-xl bg-primary-100 text-primary-900 flex items-center justify-center font-bold text-lg flex-shrink-0 border border-primary-200">
+                                {% if vendor.logo %}
+                                    <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="w-full h-full object-cover rounded-xl">
+                                {% else %}
+                                    {{ vendor.name|slice:":2"|upper }}
+                                {% endif %}
+                            </div>
+                            <!-- Bouton Favori -->
+                            {% if user.is_authenticated %}
+                            <button onclick="toggleFavorite('vendor', {{ vendor.id }}, this)" class="p-2 text-gray-400 hover:text-red-500 transition" title="Ajouter aux favoris">
+                                <i class="{% if vendor.id in user_favorite_vendor_ids %}fa-solid text-red-500{% else %}fa-regular text-gray-400{% endif %} fa-heart text-lg"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+
+                        <!-- Nom & Badges -->
+                        <div class="mt-3">
+                            <div class="flex items-center space-x-1.5">
+                                <h3 class="font-bold text-gray-900 text-base group-hover:text-primary-900 transition truncate">
+                                    <a href="{% url 'web:vendor-detail' vendor.id %}">{{ vendor.name }}</a>
+                                </h3>
+                                {% if vendor.is_verified %}
+                                <span class="text-blue-600 text-xs" title="Vendeur Vérifié">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                </span>
+                                {% endif %}
+                            </div>
+                            
+                            <p class="text-xs text-gray-500 mt-1 flex items-center">
+                                <i class="fa-solid fa-location-dot mr-1.5 text-primary-600"></i>
+                                {{ vendor.locality.name|default:"Localité non précisée" }}, {{ vendor.region.name|default:"Côte d'Ivoire" }}
+                            </p>
+                        </div>
+
+                        <!-- Type & Description courte -->
+                        <div class="mt-3 flex items-center space-x-2">
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">
+                                {{ vendor.get_vendor_type_display|default:"Vendeur" }}
+                            </span>
+                            {% if vendor.is_pro %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                PRO
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer carte avec contact direct -->
+                <div class="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs">
+                    <a href="{% url 'web:vendor-detail' vendor.id %}" class="font-semibold text-primary-900 hover:underline">
+                        Voir le stock
+                    </a>
+
+                    <div class="flex items-center space-x-2">
+                        {% if vendor.whatsapp_number or vendor.phone %}
+                        <a href="https://wa.me/{{ vendor.whatsapp_number|default:vendor.phone|cut:'+'|cut:' ' }}?text=Bonjour,%20je%20vous%20contacte%20depuis%20AgriLink%20CI" 
+                           target="_blank" rel="noopener noreferrer"
+                           class="w-8 h-8 rounded-lg bg-green-500 hover:bg-green-600 text-white flex items-center justify-center transition shadow-sm" 
+                           title="Contacter sur WhatsApp">
+                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                        </a>
+                        {% endif %}
+                        {% if vendor.phone %}
+                        <a href="tel:{{ vendor.phone }}" class="w-8 h-8 rounded-lg bg-primary-800 hover:bg-primary-900 text-white flex items-center justify-center transition shadow-sm" title="Appeler">
+                            <i class="fa-solid fa-phone text-xs"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full py-12 text-center bg-white rounded-2xl border border-gray-200">
+                <i class="fa-solid fa-store-slash text-4xl text-gray-300 mb-3"></i>
+                <p class="text-gray-500 font-medium">Aucun vendeur répertorié pour ces filtres.</p>
+                <a href="{% url 'web:vendor-list' %}" class="inline-block mt-3 text-sm font-semibold text-primary-900 underline">Réinitialiser les filtres</a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- PRODUITS EN STOCK RÉCENT -->
+    <!-- ======================================================================= -->
+    <section>
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Disponibles Immédiatement</h2>
+                <p class="text-xs sm:text-sm text-gray-500">Produits agricoles et intrants en stock chez nos vendeurs</p>
+            </div>
+            <a href="{% url 'web:vendor-list' %}" class="text-xs sm:text-sm font-semibold text-primary-900 hover:text-primary-700 flex items-center">
+                Explorer le catalogue <i class="fa-solid fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            {% for item in recent_products %}
+            <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                    <div class="h-32 sm:h-40 bg-gray-100 relative overflow-hidden flex items-center justify-center">
+                        {% if item.product.image %}
+                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <i class="fa-solid fa-wheat-awn text-4xl text-gray-300"></i>
+                        {% endif %}
+                        <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-800 border border-green-200">
+                            En Stock
+                        </span>
+                    </div>
+
+                    <div class="p-3 sm:p-4">
+                        <span class="text-[10px] uppercase font-bold text-primary-700 tracking-wider">
+                            {{ item.product.category.name|default:"Agricole" }}
+                        </span>
+                        <h4 class="font-bold text-gray-900 text-sm sm:text-base mt-0.5 truncate">
+                            {{ item.product.name }}
+                        </h4>
+                        
+                        <p class="text-xs text-gray-500 mt-1 flex items-center truncate">
+                            <i class="fa-solid fa-store mr-1 text-gray-400"></i>
+                            {{ item.vendor.name }}
+                        </p>
+
+                        <div class="mt-2.5 flex items-baseline justify-between">
+                            <div>
+                                <span class="text-base sm:text-lg font-extrabold text-primary-900">
+                                    {{ item.price_note|default:"Disponible en stock" }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-3 sm:p-4 pt-0">
+                    <a href="{% url 'web:vendor-detail' item.vendor.id %}" class="w-full py-2 bg-primary-50 hover:bg-primary-100 text-primary-900 font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition">
+                        <span>Voir l'offre</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full py-8 text-center text-gray-500">
+                Aucun produit récemment ajouté.
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- SECTION CONSEIL AGRICOLE & DIAGNOSTIC RAPIDE -->
+    <!-- ======================================================================= -->
+    <section class="bg-gradient-to-r from-emerald-50 via-teal-50 to-primary-50 rounded-3xl p-6 sm:p-8 border border-emerald-100">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="max-w-xl">
+                <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-primary-100 text-primary-900 inline-block mb-2">
+                    <i class="fa-solid fa-shield-virus mr-1"></i> Santé des Plantes
+                </span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-900">
+                    Feuilles jaunes ? Taches suspectes sur vos cultures ?
+                </h2>
+                <p class="text-sm text-gray-600 mt-2">
+                    Identifiez les maladies et ravageurs (mildiou, chenilles légionnaires, mosaïque du manioc...) et accédez aux fiches techniques de traitement agréées en Côte d'Ivoire.
+                </p>
+                <div class="mt-4 flex flex-wrap gap-3">
+                    <a href="{% url 'web:conseil-diagnostic' %}" class="px-5 py-2.5 bg-primary-900 hover:bg-primary-950 text-white font-semibold rounded-xl text-sm shadow-md transition flex items-center space-x-2">
+                        <i class="fa-solid fa-stethoscope"></i>
+                        <span>Lancer le diagnostic rapide</span>
+                    </a>
+                    <a href="{% url 'web:conseil-list' %}" class="px-5 py-2.5 bg-white hover:bg-gray-50 text-gray-700 font-semibold rounded-xl text-sm border border-gray-200 transition">
+                        Tous les guides agronomiques
+                    </a>
+                </div>
+            </div>
+
+            <!-- Articles récents épinglés -->
+            <div class="w-full md:w-80 space-y-3">
+                <h4 class="text-xs font-bold uppercase tracking-wider text-gray-500">À la une</h4>
+                {% for art in pinned_articles %}
+                <a href="{% url 'web:conseil-detail' art.slug %}" class="block bg-white p-3.5 rounded-2xl border border-emerald-200/60 shadow-sm hover:shadow-md transition">
+                    <div class="flex items-center justify-between text-[11px] text-gray-500 mb-1">
+                        <span class="font-semibold text-primary-700">{{ art.categorie.nom|default:"Agronomie" }}</span>
+                        {% if art.est_premium %}
+                            <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-bold text-[9px]">CONSEIL PRO</span>
+                        {% endif %}
+                    </div>
+                    <h5 class="text-xs sm:text-sm font-bold text-gray-900 line-clamp-2 hover:text-primary-900">
+                        {{ art.titre }}
+                    </h5>
+                </a>
+                {% empty %}
+                <p class="text-xs text-gray-400">Aucun guide épinglé pour le moment.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- PRESTATAIRES DE SERVICES (TRACTEURS, PULVÉRISATION, LOGISTIQUE) -->
+    <!-- ======================================================================= -->
+    <section>
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h2 class="text-xl sm:text-2xl font-bold text-gray-900">Services Agricoles & Matériel</h2>
+                <p class="text-xs sm:text-sm text-gray-500">Louez des tracteurs, commandez des traitements ou transportez vos récoltes</p>
+            </div>
+            <a href="{% url 'web:provider-list' %}" class="text-xs sm:text-sm font-semibold text-primary-900 hover:text-primary-700 flex items-center">
+                Voir tous les prestataires <i class="fa-solid fa-arrow-right ml-1"></i>
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            {% for prov in featured_providers %}
+            <div class="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-xl bg-orange-50 text-accent flex items-center justify-center text-xl flex-shrink-0 border border-orange-100">
+                            {% if prov.provider_type == 'tractor' %}
+                                <i class="fa-solid fa-tractor"></i>
+                            {% elif prov.provider_type == 'spraying' %}
+                                <i class="fa-solid fa-spray-can"></i>
+                            {% elif prov.provider_type == 'transport' %}
+                                <i class="fa-solid fa-truck"></i>
+                            {% else %}
+                                <i class="fa-solid fa-screwdriver-wrench"></i>
+                            {% endif %}
+                        </div>
+                        <div class="overflow-hidden">
+                            <h4 class="font-bold text-gray-900 text-sm truncate">
+                                <a href="{% url 'web:provider-detail' prov.id %}">{{ prov.name }}</a>
+                            </h4>
+                            <p class="text-[11px] text-gray-500 truncate">
+                                {{ prov.get_provider_type_display }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <p class="text-xs text-gray-600 mt-3 line-clamp-2">
+                        {{ prov.description|default:"Fourniture de services agricoles qualifiés." }}
+                    </p>
+
+                    <p class="text-xs text-gray-500 mt-2 flex items-center">
+                        <i class="fa-solid fa-map-pin mr-1.5 text-primary-600"></i>
+                        {{ prov.locality.name|default:"Abidjan" }}, {{ prov.region.name|default:"Côte d'Ivoire" }}
+                    </p>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <a href="{% url 'web:provider-detail' prov.id %}" class="text-xs font-semibold text-primary-900 hover:underline">
+                        Détails & tarifs
+                    </a>
+                    {% if prov.phone %}
+                    <a href="tel:{{ prov.phone }}" class="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 flex items-center justify-center text-xs transition">
+                        <i class="fa-solid fa-phone"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full py-8 text-center text-gray-500">
+                Aucun prestataire enregistré pour l'instant.
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- BANNIÈRE APPEL À L'ACTION : DEVENEZ VENDEUR -->
+    <!-- ======================================================================= -->
+    <section class="rounded-3xl bg-primary-900 text-white p-8 sm:p-10 relative overflow-hidden shadow-xl">
+        <div class="relative z-10 max-w-2xl">
+            <h2 class="text-2xl sm:text-3xl font-extrabold leading-tight">
+                Vous êtes producteur, commerçant d'intrants ou prestataire ?
+            </h2>
+            <p class="mt-3 text-primary-100 text-sm sm:text-base">
+                Publiez vos produits, gérez vos stocks et recevez des appels directs de milliers d'acheteurs partout en Côte d'Ivoire.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-4">
+                {% if is_seller %}
+                    <a href="{% url 'web:seller-dashboard' %}" class="px-6 py-3 rounded-xl bg-white text-primary-900 font-bold text-sm hover:bg-gray-100 transition shadow-md">
+                        Accéder à mon espace vendeur
+                    </a>
+                {% else %}
+                    <a href="{% url 'web:signup' %}?role=seller" class="px-6 py-3 rounded-xl bg-accent hover:bg-orange-600 text-white font-bold text-sm transition shadow-md">
+                        Créer mon compte vendeur gratuit
+                    </a>
+                    <a href="{% url 'web:seller-subscription' %}" class="px-6 py-3 rounded-xl bg-primary-800 hover:bg-primary-700 text-white font-semibold text-sm border border-primary-600 transition">
+                        Découvrir Vendeur Pro (5 000 FCFA/mois)
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+</div>
+{% endblock %}

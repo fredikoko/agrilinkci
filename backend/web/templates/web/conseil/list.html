@@ -1,0 +1,176 @@
+{% extends "web/base.html" %}
+
+{% block title %}Conseil Agricole & Guides Agronomiques — AgriLink CI{% endblock %}
+
+{% block content %}
+<!-- En-tête -->
+<div class="bg-gradient-to-r from-emerald-800 to-primary-950 text-white py-10 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="max-w-2xl">
+                <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-white/10 text-emerald-200 inline-block mb-3 border border-white/10">
+                    <i class="fa-solid fa-graduation-cap mr-1"></i> Vulgarisation & Agronomie
+                </span>
+                <h1 class="text-2xl sm:text-4xl font-extrabold tracking-tight">Conseils Agricoles & Guides Techniques</h1>
+                <p class="mt-2 text-sm sm:text-base text-emerald-100">
+                    Itinéraires techniques, traitements phytosanitaires agréés et alertes météo pour optimiser vos rendements en Côte d'Ivoire.
+                </p>
+            </div>
+
+            <!-- CTA Diagnostic & Abonnement -->
+            <div class="flex flex-wrap gap-3">
+                <a href="{% url 'web:conseil-diagnostic' %}" class="px-5 py-2.5 rounded-xl bg-accent hover:bg-orange-600 text-white font-bold text-xs sm:text-sm shadow transition flex items-center space-x-2">
+                    <i class="fa-solid fa-stethoscope"></i>
+                    <span>Diagnostic Maladies</span>
+                </a>
+                <a href="{% url 'web:conseil-subscription' %}" class="px-5 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm border border-white/20 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-crown text-amber-400"></i>
+                    <span>Formules Conseil Pro</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- Barre de recherche -->
+        <div class="mt-6 max-w-2xl">
+            <form method="GET" class="relative">
+                <input type="text" name="q" value="{{ search_query }}" placeholder="Rechercher une culture, maladie ou pratique..." 
+                       class="w-full pl-10 pr-4 py-3 rounded-2xl bg-white/10 backdrop-blur border border-white/20 text-white placeholder-emerald-200 text-sm focus:outline-none focus:bg-white focus:text-gray-900 focus:placeholder-gray-400 transition">
+                <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-emerald-200 text-sm"></i>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- ======================================================================= -->
+    <!-- ALERTES ACTIVES -->
+    <!-- ======================================================================= -->
+    {% if active_alerts %}
+    <div class="space-y-3">
+        {% for alert in active_alerts %}
+        <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start space-x-3">
+            <i class="fa-solid fa-triangle-exclamation text-amber-600 text-xl flex-shrink-0 mt-0.5"></i>
+            <div class="flex-1 text-xs sm:text-sm">
+                <div class="font-bold flex items-center gap-2">
+                    <span>{{ alert.titre }}</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-amber-200 text-amber-800">{{ alert.niveau }}</span>
+                </div>
+                <p class="mt-1 text-amber-800">{{ alert.message }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- ======================================================================= -->
+    <!-- FILTRES PAR THÉMATIQUE (PILLS) -->
+    <!-- ======================================================================= -->
+    <div class="flex items-center space-x-2 overflow-x-auto pb-2 hide-scrollbar">
+        <a href="{% url 'web:conseil-list' %}" 
+           class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold {% if not selected_category %}bg-primary-900 text-white{% else %}bg-white border border-gray-200 text-gray-700 hover:bg-gray-50{% endif %} shadow-sm transition">
+            Tous les thèmes
+        </a>
+        {% for cat in categories %}
+        <a href="{% url 'web:conseil-list' %}?category={{ cat.id }}" 
+           class="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-semibold {% if selected_category == cat.id|stringformat:'s' %}bg-primary-900 text-white{% else %}bg-white border border-gray-200 text-gray-700 hover:bg-gray-50{% endif %} shadow-sm transition">
+            {{ cat.nom }}
+        </a>
+        {% endfor %}
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- GRILLE DES ARTICLES & GUIDES -->
+    <!-- ======================================================================= -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for article in page_obj %}
+        <div class="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-lg transition flex flex-col justify-between group">
+            <div>
+                <div class="h-44 bg-gray-100 relative overflow-hidden flex items-center justify-center">
+                    {% if article.image_principale %}
+                        <img src="{{ article.image_principale.url }}" alt="{{ article.titre }}" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                    {% else %}
+                        <i class="fa-solid fa-leaf text-5xl text-gray-300"></i>
+                    {% endif %}
+
+                    <!-- Badge Thème -->
+                    <span class="absolute top-3 left-3 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-white/90 backdrop-blur text-primary-900 shadow">
+                        {{ article.categorie.nom|default:"Agronomie" }}
+                    </span>
+
+                    <!-- Badge Conseil Pro si Premium -->
+                    {% if article.est_premium %}
+                    <span class="absolute top-3 right-3 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-amber-500 text-white shadow flex items-center space-x-1">
+                        <i class="fa-solid fa-crown text-[9px]"></i>
+                        <span>CONSEIL PRO</span>
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="p-5">
+                    {% if article.culture %}
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-emerald-700">Culture : {{ article.culture }}</span>
+                    {% endif %}
+                    
+                    <h3 class="font-bold text-gray-900 text-base mt-1 group-hover:text-primary-900 transition line-clamp-2">
+                        <a href="{% url 'web:conseil-detail' article.slug %}">{{ article.titre }}</a>
+                    </h3>
+
+                    <p class="text-xs text-gray-600 mt-2 line-clamp-3 leading-relaxed">
+                        {{ article.resume|default:article.contenu|striptags|truncatewords:25 }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="px-5 py-3.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span class="flex items-center">
+                    <i class="fa-regular fa-clock mr-1"></i> {{ article.temps_lecture_minutes|default:"4" }} min de lecture
+                </span>
+                
+                <a href="{% url 'web:conseil-detail' article.slug %}" class="font-bold text-primary-900 hover:underline flex items-center">
+                    <span>Lire le guide</span>
+                    <i class="fa-solid fa-arrow-right ml-1 text-[10px]"></i>
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full py-16 text-center bg-white rounded-2xl border border-gray-200">
+            <i class="fa-solid fa-book-open text-4xl text-gray-300 mb-3"></i>
+            <h3 class="font-bold text-gray-700 text-lg">Aucun guide ne correspond à vos filtres</h3>
+            <p class="text-gray-500 text-sm mt-1">Essayez d'autres mots-clés ou réinitialisez la sélection.</p>
+            <a href="{% url 'web:conseil-list' %}" class="inline-block mt-4 px-4 py-2 bg-primary-900 text-white text-xs font-semibold rounded-xl">
+                Voir tous les conseils
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- PAGINATION -->
+    <!-- ======================================================================= -->
+    {% if page_obj.has_other_pages %}
+    <div class="flex items-center justify-center space-x-2 pt-6">
+        {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}&q={{ search_query }}&category={{ selected_category }}" class="w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center justify-center transition shadow-sm text-sm">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+        {% endif %}
+
+        {% for p in page_obj.paginator.page_range %}
+            {% if p == page_obj.number %}
+                <span class="w-10 h-10 rounded-xl bg-primary-900 text-white font-bold flex items-center justify-center shadow text-sm">{{ p }}</span>
+            {% elif p > page_obj.number|add:"-3" and p < page_obj.number|add:"3" %}
+                <a href="?page={{ p }}&q={{ search_query }}&category={{ selected_category }}" class="w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center justify-center transition shadow-sm text-sm">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}&q={{ search_query }}&category={{ selected_category }}" class="w-10 h-10 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 flex items-center justify-center transition shadow-sm text-sm">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

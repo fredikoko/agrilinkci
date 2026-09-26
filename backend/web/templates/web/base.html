@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}AgriLink CI — La Plateforme Agricole de Côte d'Ivoire{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Plateforme connectant les producteurs agricoles, acheteurs, vendeurs d'intrants et prestataires en Côte d'Ivoire.{% endblock %}">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#1C6138', /* Couleur officielle AgriLink CI */
+                            950: '#0f3a21',
+                        },
+                        secondary: '#E6F2E6',
+                        accent: '#F97316',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- FontAwesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <style>
+        /* Smooth scrolling & mobile tap highlighting */
+        html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="flex flex-col min-h-screen text-gray-800 antialiased pb-16 md:pb-0">
+
+    <!-- ======================================================================= -->
+    <!-- NAVIGATION BAR (DESKTOP & MOBILE TOP) -->
+    <!-- ======================================================================= -->
+    <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                
+                <!-- Logo & Mobile Drawer Button -->
+                <div class="flex items-center space-x-3">
+                    <button id="mobile-menu-btn" class="md:hidden text-gray-600 hover:text-primary-900 focus:outline-none p-1.5" aria-label="Menu">
+                        <i class="fa-solid fa-bars text-xl"></i>
+                    </button>
+                    <a href="{% url 'web:home' %}" class="flex items-center space-x-2">
+                        <div class="w-10 h-10 rounded-xl bg-primary-900 flex items-center justify-center text-white shadow-md">
+                            <i class="fa-solid fa-seedling text-lg"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="text-xl font-bold tracking-tight text-primary-900 leading-none">AgriLink<span class="text-accent">.ci</span></span>
+                            <span class="text-[10px] uppercase font-semibold tracking-wider text-gray-500">Côte d'Ivoire</span>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Desktop Search Bar -->
+                <div class="hidden lg:flex flex-1 max-w-md mx-8">
+                    <form action="{% url 'web:vendor-list' %}" method="GET" class="w-full relative">
+                        <input type="text" name="q" value="{{ search_query|default:'' }}" 
+                               placeholder="Chercher un produit, vendeur, culture..." 
+                               class="w-full pl-10 pr-4 py-2 text-sm bg-gray-100 border border-transparent rounded-full focus:bg-white focus:border-primary-700 focus:ring-2 focus:ring-primary-100 outline-none transition">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-gray-400 text-sm"></i>
+                    </form>
+                </div>
+
+                <!-- Desktop Navigation Links -->
+                <nav class="hidden md:flex items-center space-x-1 lg:space-x-3 text-sm font-medium">
+                    <a href="{% url 'web:vendor-list' %}" class="px-3 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
+                        <i class="fa-solid fa-store mr-1 text-primary-700"></i> Vendeurs
+                    </a>
+                    <a href="{% url 'web:conseil-list' %}" class="px-3 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
+                        <i class="fa-solid fa-book-open mr-1 text-primary-700"></i> Conseil Pro
+                    </a>
+                    <a href="{% url 'web:provider-list' %}" class="px-3 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
+                        <i class="fa-solid fa-tractor mr-1 text-primary-700"></i> Prestataires
+                    </a>
+                </nav>
+
+                <!-- User & Action Buttons -->
+                <div class="flex items-center space-x-2">
+                    {% if user.is_authenticated %}
+                        <!-- Notifications Bell -->
+                        <a href="{% url 'web:notifications' %}" class="relative p-2 text-gray-600 hover:text-primary-900 hover:bg-gray-100 rounded-full transition" title="Notifications">
+                            <i class="fa-solid fa-bell text-lg"></i>
+                            {% if unread_notifications_count > 0 %}
+                                <span class="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                                    {{ unread_notifications_count }}
+                                </span>
+                            {% endif %}
+                        </a>
+
+                        <!-- Favorites Icon -->
+                        <a href="{% url 'web:favorites' %}" class="hidden sm:flex p-2 text-gray-600 hover:text-red-500 hover:bg-gray-100 rounded-full transition" title="Mes Favoris">
+                            <i class="fa-solid fa-heart text-lg"></i>
+                        </a>
+
+                        <!-- Espace Vendeur CTA -->
+                        {% if is_seller %}
+                            <a href="{% url 'web:seller-dashboard' %}" class="hidden sm:inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary-100 text-primary-900 hover:bg-primary-200 transition">
+                                <i class="fa-solid fa-gauge mr-1.5"></i> Mon Espace
+                                {% if is_pro_seller %}
+                                    <span class="ml-1.5 px-1 py-0.2 bg-amber-500 text-white text-[9px] rounded font-bold uppercase">Pro</span>
+                                {% endif %}
+                            </a>
+                        {% else %}
+                            <a href="{% url 'web:seller-subscription' %}" class="hidden sm:inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-lg bg-accent text-white hover:bg-orange-600 transition shadow-sm">
+                                <i class="fa-solid fa-store mr-1.5"></i> Vendre
+                            </a>
+                        {% endif %}
+
+                        <!-- Profile Dropdown Button -->
+                        <a href="{% url 'web:profile' %}" class="flex items-center space-x-2 p-1.5 rounded-lg hover:bg-gray-100 transition">
+                            <div class="w-8 h-8 rounded-full bg-primary-900 text-white flex items-center justify-center font-bold text-xs">
+                                {{ user.first_name|default:user.username|slice:":1"|upper }}
+                            </div>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'web:login' %}" class="px-3 py-2 text-sm font-medium text-gray-700 hover:text-primary-900">
+                            Connexion
+                        </a>
+                        <a href="{% url 'web:signup' %}" class="px-4 py-2 text-sm font-semibold rounded-xl bg-primary-900 text-white hover:bg-primary-800 transition shadow-sm">
+                            Inscription
+                        </a>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </header>
+
+    <!-- ======================================================================= -->
+    <!-- MOBILE DRAWER MENU (SLIDE-OVER) -->
+    <!-- ======================================================================= -->
+    <div id="drawer-backdrop" class="fixed inset-0 bg-black/50 z-50 hidden transition-opacity"></div>
+    <div id="mobile-drawer" class="fixed inset-y-0 left-0 max-w-xs w-full bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl flex flex-col">
+        <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-primary-900 text-white">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-seedling text-xl"></i>
+                <span class="font-bold text-lg">AgriLink CI</span>
+            </div>
+            <button id="close-drawer-btn" class="text-white hover:text-gray-200 text-xl p-1">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-4">
+            {% if user.is_authenticated %}
+                <div class="p-3 bg-primary-50 rounded-xl flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-primary-900 text-white flex items-center justify-center font-bold">
+                        {{ user.first_name|default:user.username|slice:":1"|upper }}
+                    </div>
+                    <div>
+                        <div class="font-bold text-sm text-gray-900">{{ user.first_name|default:user.username }}</div>
+                        <div class="text-xs text-gray-500">{{ user_account.phone_e164|default:user.email }}</div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="space-y-1">
+                <a href="{% url 'web:home' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-house text-primary-700 w-5"></i>
+                    <span>Accueil</span>
+                </a>
+                <a href="{% url 'web:vendor-list' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-store text-primary-700 w-5"></i>
+                    <span>Annuaire des Vendeurs</span>
+                </a>
+                <a href="{% url 'web:conseil-list' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-book-open text-primary-700 w-5"></i>
+                    <span>Conseil Agricole & Alertes</span>
+                </a>
+                <a href="{% url 'web:conseil-diagnostic' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-stethoscope text-primary-700 w-5"></i>
+                    <span>Diagnostic de Culture</span>
+                </a>
+                <a href="{% url 'web:provider-list' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-tractor text-primary-700 w-5"></i>
+                    <span>Prestataires & Matériel</span>
+                </a>
+            </div>
+
+            <hr class="border-gray-200">
+
+            <div class="space-y-1">
+                <div class="px-3 text-xs font-semibold uppercase text-gray-400 tracking-wider">Espaces Professionnels</div>
+                <a href="{% url 'web:seller-dashboard' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
+                    <i class="fa-solid fa-gauge text-gray-500 w-5"></i>
+                    <span>Espace Vendeur</span>
+                </a>
+                <a href="{% url 'web:provider-space' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
+                    <i class="fa-solid fa-screwdriver-wrench text-gray-500 w-5"></i>
+                    <span>Espace Prestataire</span>
+                </a>
+                <a href="{% url 'web:conseil-subscription' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
+                    <i class="fa-solid fa-certificate text-gray-500 w-5"></i>
+                    <span>Abonnement Conseil Pro</span>
+                </a>
+            </div>
+
+            <hr class="border-gray-200">
+
+            {% if user.is_authenticated %}
+                <div class="space-y-1">
+                    <a href="{% url 'web:profile' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
+                        <i class="fa-solid fa-user text-gray-500 w-5"></i>
+                        <span>Mon Profil & Localisation</span>
+                    </a>
+                    <a href="{% url 'web:favorites' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
+                        <i class="fa-solid fa-heart text-gray-500 w-5"></i>
+                        <span>Mes Favoris</span>
+                    </a>
+                    <a href="{% url 'web:logout' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-red-600 hover:bg-red-50 text-sm font-semibold">
+                        <i class="fa-solid fa-right-from-bracket w-5"></i>
+                        <span>Déconnexion</span>
+                    </a>
+                </div>
+            {% else %}
+                <div class="pt-2 space-y-2">
+                    <a href="{% url 'web:login' %}" class="block w-full py-2.5 text-center text-sm font-semibold text-primary-900 border border-primary-900 rounded-xl">
+                        Connexion
+                    </a>
+                    <a href="{% url 'web:signup' %}" class="block w-full py-2.5 text-center text-sm font-semibold text-white bg-primary-900 rounded-xl shadow">
+                        Créer un compte
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- MESSAGES FLASH (TOASTS) -->
+    <!-- ======================================================================= -->
+    {% if messages %}
+        <div class="max-w-4xl mx-auto px-4 mt-4 w-full">
+            {% for message in messages %}
+                <div class="flex items-center justify-between p-4 mb-2 rounded-xl text-sm font-medium shadow-sm transition-all {% if message.tags == 'error' %}bg-red-50 text-red-800 border border-red-200{% elif message.tags == 'success' %}bg-green-50 text-green-800 border border-green-200{% else %}bg-blue-50 text-blue-800 border border-blue-200{% endif %}" role="alert">
+                    <div class="flex items-center space-x-3">
+                        {% if message.tags == 'error' %}
+                            <i class="fa-solid fa-circle-exclamation text-red-500 text-lg"></i>
+                        {% elif message.tags == 'success' %}
+                            <i class="fa-solid fa-circle-check text-green-500 text-lg"></i>
+                        {% else %}
+                            <i class="fa-solid fa-circle-info text-blue-500 text-lg"></i>
+                        {% endif %}
+                        <span>{{ message }}</span>
+                    </div>
+                    <button type="button" onclick="this.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <!-- ======================================================================= -->
+    <!-- CONTENU PRINCIPAL -->
+    <!-- ======================================================================= -->
+    <main class="flex-1">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- ======================================================================= -->
+    <!-- MOBILE BOTTOM NAVIGATION (FIXED ON SMARTPHONES) -->
+    <!-- ======================================================================= -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+        <div class="grid grid-cols-5 h-16 text-[10px] font-medium text-gray-500">
+            <a href="{% url 'web:home' %}" class="flex flex-col items-center justify-center hover:text-primary-900 transition">
+                <i class="fa-solid fa-house text-lg mb-1"></i>
+                <span>Accueil</span>
+            </a>
+            <a href="{% url 'web:vendor-list' %}" class="flex flex-col items-center justify-center hover:text-primary-900 transition">
+                <i class="fa-solid fa-store text-lg mb-1"></i>
+                <span>Vendeurs</span>
+            </a>
+            <a href="{% url 'web:conseil-list' %}" class="flex flex-col items-center justify-center hover:text-primary-900 transition">
+                <i class="fa-solid fa-book-open text-lg mb-1"></i>
+                <span>Conseils</span>
+            </a>
+            <a href="{% url 'web:favorites' %}" class="flex flex-col items-center justify-center hover:text-primary-900 transition relative">
+                <i class="fa-solid fa-heart text-lg mb-1"></i>
+                <span>Favoris</span>
+            </a>
+            {% if user.is_authenticated %}
+                <a href="{% url 'web:profile' %}" class="flex flex-col items-center justify-center hover:text-primary-900 transition">
+                    <i class="fa-solid fa-user text-lg mb-1"></i>
+                    <span>Compte</span>
+                </a>
+            {% else %}
+                <a href="{% url 'web:login' %}" class="flex flex-col items-center justify-center hover:text-primary-900 transition text-primary-900 font-bold">
+                    <i class="fa-solid fa-right-to-bracket text-lg mb-1"></i>
+                    <span>Connexion</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ======================================================================= -->
+    <!-- FOOTER RESPONSIVE -->
+    <!-- ======================================================================= -->
+    <footer class="bg-gray-900 text-gray-300 mt-16 pt-12 pb-8 border-t border-gray-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div class="space-y-4">
+                    <div class="flex items-center space-x-2">
+                        <div class="w-8 h-8 rounded-lg bg-primary-700 flex items-center justify-center text-white font-bold">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <span class="text-xl font-bold text-white tracking-tight">AgriLink<span class="text-accent">.ci</span></span>
+                    </div>
+                    <p class="text-sm text-gray-400 leading-relaxed">
+                        La plateforme agricole de référence en Côte d'Ivoire. Connectez-vous directement aux producteurs, vendeurs de vivriers et prestataires dans les 31 régions ivoiriennes.
+                    </p>
+                    <div class="flex space-x-3 text-gray-400">
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-primary-700 hover:text-white transition"><i class="fa-brands fa-whatsapp"></i></a>
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-primary-700 hover:text-white transition"><i class="fa-brands fa-facebook-f"></i></a>
+                        <a href="#" class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center hover:bg-primary-700 hover:text-white transition"><i class="fa-brands fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Marketplace</h3>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="{% url 'web:vendor-list' %}" class="hover:text-white transition">Annuaire des vendeurs</a></li>
+                        <li><a href="{% url 'web:vendor-list' %}?type=coopérative" class="hover:text-white transition">Coopératives agricoles</a></li>
+                        <li><a href="{% url 'web:vendor-list' %}?type=grossiste" class="hover:text-white transition">Grossistes en vivrier</a></li>
+                        <li><a href="{% url 'web:seller-subscription' %}" class="hover:text-white transition">Devenir vendeur</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Conseil & Services</h3>
+                    <ul class="space-y-2 text-sm text-gray-400">
+                        <li><a href="{% url 'web:conseil-list' %}" class="hover:text-white transition">Fiches techniques agricoles</a></li>
+                        <li><a href="{% url 'web:conseil-diagnostic' %}" class="hover:text-white transition">Diagnostic des maladies</a></li>
+                        <li><a href="{% url 'web:provider-list' %}" class="hover:text-white transition">Location de tracteurs & matériel</a></li>
+                        <li><a href="{% url 'web:conseil-subscription' %}" class="hover:text-white transition">Formules Conseil Pro</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Paiements Sécurisés</h3>
+                    <p class="text-sm text-gray-400 mb-3">
+                        Abonnements et transactions 100% sécurisés via <strong class="text-white">Chariow</strong> :
+                    </p>
+                    <div class="flex flex-wrap gap-2 text-xs font-semibold text-gray-300">
+                        <span class="px-2.5 py-1 bg-gray-800 rounded-md border border-gray-700">Orange Money</span>
+                        <span class="px-2.5 py-1 bg-gray-800 rounded-md border border-gray-700">MTN MoMo</span>
+                        <span class="px-2.5 py-1 bg-gray-800 rounded-md border border-gray-700">Wave</span>
+                        <span class="px-2.5 py-1 bg-gray-800 rounded-md border border-gray-700">Moov Money</span>
+                        <span class="px-2.5 py-1 bg-gray-800 rounded-md border border-gray-700">Carte Visa/MC</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-8 border-t border-gray-800 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500">
+                <p>&copy; {% now "Y" %} AgriLink CI. Tous droits réservés.</p>
+                <div class="flex space-x-6 mt-4 sm:mt-0">
+                    <a href="#" class="hover:text-gray-400">Mentions légales</a>
+                    <a href="#" class="hover:text-gray-400">Politique de confidentialité</a>
+                    <a href="#" class="hover:text-gray-400">Conditions générales d'utilisation</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ======================================================================= -->
+    <!-- INTERACTIVE JAVASCRIPT -->
+    <!-- ======================================================================= -->
+    <script>
+        // Drawer Mobile Menu Toggle
+        const menuBtn = document.getElementById('mobile-menu-btn');
+        const closeBtn = document.getElementById('close-drawer-btn');
+        const drawer = document.getElementById('mobile-drawer');
+        const backdrop = document.getElementById('drawer-backdrop');
+
+        function openDrawer() {
+            drawer.classList.remove('-translate-x-full');
+            backdrop.classList.remove('hidden');
+        }
+        function closeDrawer() {
+            drawer.classList.add('-translate-x-full');
+            backdrop.classList.add('hidden');
+        }
+
+        if (menuBtn) menuBtn.addEventListener('click', openDrawer);
+        if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+        if (backdrop) backdrop.addEventListener('click', closeDrawer);
+
+        // Helper AJAX CSRF Token
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Toggle Favorite AJAX
+        function toggleFavorite(type, id, btnElement) {
+            const formData = new FormData();
+            formData.append('type', type);
+            formData.append('id', id);
+
+            fetch('{% url "web:favorite-toggle" %}', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status) {
+                    const icon = btnElement.querySelector('i');
+                    if (data.is_favorited) {
+                        icon.classList.remove('fa-regular', 'text-gray-400');
+                        icon.classList.add('fa-solid', 'text-red-500');
+                    } else {
+                        icon.classList.remove('fa-solid', 'text-red-500');
+                        icon.classList.add('fa-regular', 'text-gray-400');
+                    }
+                }
+            })
+            .catch(err => console.error(err));
+        }
+
+        // Dynamic Region -> Locality Selector
+        function setupRegionLocalityCascade(regionSelectId, localitySelectId) {
+            const rSelect = document.getElementById(regionSelectId);
+            const lSelect = document.getElementById(localitySelectId);
+            if (!rSelect || !lSelect) return;
+
+            rSelect.addEventListener('change', function() {
+                const regionId = this.value;
+                lSelect.innerHTML = '<option value="">Chargement des localités...</option>';
+                if (!regionId) {
+                    lSelect.innerHTML = '<option value="">Toutes localités</option>';
+                    return;
+                }
+                fetch(`/ajax/regions/${regionId}/localities/`)
+                    .then(res => res.json())
+                    .then(data => {
+                        let html = '<option value="">Toutes localités</option>';
+                        data.localities.forEach(loc => {
+                            html += `<option value="${loc.id}">${loc.name}</option>`;
+                        });
+                        lSelect.innerHTML = html;
+                    })
+                    .catch(() => {
+                        lSelect.innerHTML = '<option value="">Erreur de chargement</option>';
+                    });
+            });
+        }
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

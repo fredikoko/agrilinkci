@@ -1,0 +1,140 @@
+{% extends "web/base.html" %}
+
+{% block title %}{{ provider.name }} — Prestataire Agricole AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gray-100 py-6 border-b border-gray-200">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <nav class="flex items-center space-x-2 text-xs text-gray-500 mb-4">
+            <a href="{% url 'web:home' %}" class="hover:text-primary-900">Accueil</a>
+            <span>/</span>
+            <a href="{% url 'web:provider-list' %}" class="hover:text-primary-900">Prestataires</a>
+            <span>/</span>
+            <span class="text-gray-800 font-semibold">{{ provider.name }}</span>
+        </nav>
+
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div class="flex items-start sm:items-center space-x-4">
+                <div class="w-20 h-20 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center text-3xl flex-shrink-0 border border-orange-200">
+                    {% if provider.provider_type == 'tractor' %}
+                        <i class="fa-solid fa-tractor"></i>
+                    {% elif provider.provider_type == 'spraying' %}
+                        <i class="fa-solid fa-spray-can"></i>
+                    {% elif provider.provider_type == 'transport' %}
+                        <i class="fa-solid fa-truck"></i>
+                    {% else %}
+                        <i class="fa-solid fa-wrench"></i>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">{{ provider.name }}</h1>
+                        {% if provider.is_verified %}
+                        <span class="text-blue-600 text-sm" title="Prestataire Vérifié">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </span>
+                        {% endif %}
+                    </div>
+                    <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-orange-100 text-accent">
+                        {{ provider.get_provider_type_display }}
+                    </span>
+                    <p class="text-xs sm:text-sm text-gray-500 mt-1 flex items-center">
+                        <i class="fa-solid fa-map-pin mr-1.5 text-primary-600"></i>
+                        {{ provider.address|default:provider.locality.name|default:"Localité non précisée" }}, {{ provider.region.name|default:"Côte d'Ivoire" }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Boutons de contact -->
+            <div class="flex flex-wrap items-center gap-3">
+                {% if provider.whatsapp_number or provider.phone %}
+                <a href="https://wa.me/{{ provider.whatsapp_number|default:provider.phone|cut:'+'|cut:' ' }}?text=Bonjour,%20je%20souhaite%20des%20informations%20sur%20vos%20services%20agricoles%20sur%20AgriLink%20CI" 
+                   target="_blank" rel="noopener noreferrer"
+                   class="px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm flex items-center space-x-2 shadow transition">
+                    <i class="fa-brands fa-whatsapp text-base"></i>
+                    <span>Discuter sur WhatsApp</span>
+                </a>
+                {% endif %}
+
+                {% if provider.phone %}
+                <a href="tel:{{ provider.phone }}" class="px-5 py-2.5 rounded-xl bg-primary-900 hover:bg-primary-950 text-white font-bold text-xs sm:text-sm flex items-center space-x-2 shadow transition">
+                    <i class="fa-solid fa-phone text-sm"></i>
+                    <span>Appeler</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Services & Tarifs -->
+        <div class="lg:col-span-2 space-y-6">
+            <section class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fa-solid fa-list-check mr-2 text-primary-900"></i>
+                    Services & Tarifs Proposés
+                </h2>
+
+                <div class="space-y-4">
+                    {% for s in services %}
+                    <div class="p-4 rounded-2xl bg-gray-50 border border-gray-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                            <h3 class="font-bold text-sm text-gray-900">{{ s.title }}</h3>
+                            <p class="text-xs text-gray-600 mt-1">{{ s.description|default:"Prestation professionnelle garantie." }}</p>
+                        </div>
+                        <div class="text-right sm:text-right flex-shrink-0">
+                            <span class="text-lg font-black text-primary-900">{{ s.rate|floatformat:0 }} FCFA</span>
+                            <span class="text-xs text-gray-500 block">/ {{ s.unit }}</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 italic">Aucun tarif unitaire détaillé n'a été spécifié. Contactez le prestataire par WhatsApp ou téléphone pour un devis personnalisé.</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- Avis clients -->
+            <section class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Avis des clients</h2>
+                <div class="space-y-3">
+                    {% for rev in reviews %}
+                    <div class="pb-3 border-b border-gray-100 last:border-0 last:pb-0">
+                        <div class="flex items-center justify-between text-xs mb-1">
+                            <span class="font-bold text-gray-800">{{ rev.author.first_name|default:rev.author.username }}</span>
+                            <span class="text-gray-400">{{ rev.created_at|date:"d M Y" }}</span>
+                        </div>
+                        <p class="text-xs text-gray-600">{{ rev.comment }}</p>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 italic">Aucun avis pour l'instant.</p>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+
+        <!-- À propos -->
+        <div>
+            <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm space-y-4 sticky top-20">
+                <h3 class="font-bold text-gray-900 text-base pb-3 border-b border-gray-100">Coordonnées</h3>
+                <div>
+                    <span class="text-xs text-gray-400 font-semibold uppercase block">Présentation</span>
+                    <p class="text-xs text-gray-700 mt-1 leading-relaxed">{{ provider.description|default:"Fourniture de prestations de mécanisation et de logistique agricole." }}</p>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-400 font-semibold uppercase block">Zone d'intervention</span>
+                    <p class="text-xs font-semibold text-gray-800 mt-1">{{ provider.locality.name|default:"Toute région" }}, {{ provider.region.name|default:"Côte d'Ivoire" }}</p>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-400 font-semibold uppercase block">Contact</span>
+                    <p class="text-xs font-semibold text-gray-800 mt-1">{{ provider.phone }}</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

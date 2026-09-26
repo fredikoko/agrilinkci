@@ -8,6 +8,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", include("directory_app.urls")),
     path("api/conseil/", include("conseil.urls")),
+    path("", include("web.urls")),
 ]
 
 if settings.DEBUG or not getattr(settings, "AWS_STORAGE_BUCKET_NAME", ""):

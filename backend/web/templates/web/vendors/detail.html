@@ -1,0 +1,292 @@
+{% extends "web/base.html" %}
+
+{% block title %}{{ vendor.name }} — Vendeur AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gray-100 py-6 border-b border-gray-200">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Fil d'Ariane -->
+        <nav class="flex items-center space-x-2 text-xs text-gray-500 mb-4">
+            <a href="{% url 'web:home' %}" class="hover:text-primary-900">Accueil</a>
+            <span>/</span>
+            <a href="{% url 'web:vendor-list' %}" class="hover:text-primary-900">Vendeurs</a>
+            <span>/</span>
+            <span class="text-gray-800 font-semibold">{{ vendor.name }}</span>
+        </nav>
+
+        <!-- Carte d'en-tête vendeur -->
+        <div class="bg-white rounded-3xl p-6 sm:p-8 border border-gray-200 shadow-sm">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                
+                <div class="flex items-start sm:items-center space-x-4">
+                    <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-primary-100 text-primary-900 flex items-center justify-center font-extrabold text-2xl sm:text-3xl flex-shrink-0 border-2 border-primary-200">
+                        {% if vendor.logo %}
+                            <img src="{{ vendor.logo.url }}" alt="{{ vendor.name }}" class="w-full h-full object-cover rounded-2xl">
+                        {% else %}
+                            {{ vendor.name|slice:":2"|upper }}
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <div class="flex items-center space-x-2">
+                            <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">{{ vendor.name }}</h1>
+                            {% if vendor.is_verified %}
+                            <span class="text-blue-600 text-base" title="Vendeur Certifié & Vérifié">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </span>
+                            {% endif %}
+                            {% if vendor.is_pro %}
+                            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                                PRO
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <p class="text-xs sm:text-sm text-gray-500 mt-1 flex items-center">
+                            <i class="fa-solid fa-location-dot mr-1.5 text-primary-600"></i>
+                            {{ vendor.address|default:vendor.locality.name|default:"Côte d'Ivoire" }}, {{ vendor.region.name|default:"" }}
+                        </p>
+
+                        <!-- Avis & Note étoiles -->
+                        <div class="flex items-center space-x-3 mt-2">
+                            <div class="flex items-center text-amber-400 text-xs">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= avg_rating %}
+                                        <i class="fa-solid fa-star"></i>
+                                    {% else %}
+                                        <i class="fa-regular fa-star text-gray-300"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <span class="text-xs font-bold text-gray-700">{{ avg_rating }} / 5</span>
+                            <span class="text-xs text-gray-400">({{ review_count }} avis)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Boutons d'action directs -->
+                <div class="flex flex-wrap items-center gap-3">
+                    {% if user.is_authenticated %}
+                    <button onclick="toggleFavorite('vendor', {{ vendor.id }}, this)" class="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:text-red-500 font-semibold text-xs transition flex items-center space-x-1.5 shadow-sm">
+                        <i class="{% if is_favorited %}fa-solid text-red-500{% else %}fa-regular text-gray-400{% endif %} fa-heart text-sm"></i>
+                        <span>Favori</span>
+                    </button>
+                    {% endif %}
+
+                    {% if vendor.whatsapp_number or vendor.phone %}
+                    <a href="https://wa.me/{{ vendor.whatsapp_number|default:vendor.phone|cut:'+'|cut:' ' }}?text=Bonjour,%20je%20suis%20int%C3%A9ress%C3%A9%20par%20vos%20produits%20sur%20AgriLink%20CI" 
+                       target="_blank" rel="noopener noreferrer"
+                       onclick="trackContact({{ vendor.id }}, 'whatsapp')"
+                       class="px-5 py-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold text-xs sm:text-sm flex items-center space-x-2 shadow-md transition">
+                        <i class="fa-brands fa-whatsapp text-base"></i>
+                        <span>Discuter sur WhatsApp</span>
+                    </a>
+                    {% endif %}
+
+                    {% if vendor.phone %}
+                    <a href="tel:{{ vendor.phone }}" 
+                       onclick="trackContact({{ vendor.id }}, 'call')"
+                       class="px-5 py-2.5 rounded-xl bg-primary-900 hover:bg-primary-950 text-white font-bold text-xs sm:text-sm flex items-center space-x-2 shadow-md transition">
+                        <i class="fa-solid fa-phone text-sm"></i>
+                        <span>Appeler directement</span>
+                    </a>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- =================================================================== -->
+        <!-- PRODUITS & STOCKS DISPONIBLES (COLONNE PRINCIPALE) -->
+        <!-- =================================================================== -->
+        <div class="lg:col-span-2 space-y-8">
+            
+            <section>
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-gray-900 flex items-center">
+                        <i class="fa-solid fa-boxes-stacked mr-2 text-primary-900"></i>
+                        Catalogue & Stock Disponible ({{ stock_items|length }})
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {% for item in stock_items %}
+                    <div class="bg-white rounded-2xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                        <div>
+                            <div class="h-36 bg-gray-100 rounded-xl overflow-hidden mb-3 relative flex items-center justify-center">
+                                {% if item.product.image %}
+                                    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="w-full h-full object-cover">
+                                {% else %}
+                                    <i class="fa-solid fa-wheat-awn text-4xl text-gray-300"></i>
+                                {% endif %}
+
+                                <span class="absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-bold {% if item.quantity_available > 0 %}bg-green-100 text-green-800 border border-green-200{% else %}bg-red-100 text-red-800 border border-red-200{% endif %}">
+                                    {% if item.quantity_available > 0 %}Disponible ({{ item.quantity_available|floatformat:0 }} {{ item.product.unit }}){% else %}Rupture de stock{% endif %}
+                                </span>
+                            </div>
+
+                            <span class="text-[10px] uppercase font-bold text-primary-700 tracking-wider">
+                                {{ item.product.category.name|default:"Filière" }}
+                            </span>
+                            <h3 class="font-bold text-gray-900 text-base mt-0.5">{{ item.product.name }}</h3>
+
+                            <div class="mt-2 flex items-baseline">
+                                <span class="text-xl font-extrabold text-primary-900">{{ item.price_note|default:"Prix sur demande" }}</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-3 border-t border-gray-100">
+                            {% if vendor.whatsapp_number or vendor.phone %}
+                            <a href="https://wa.me/{{ vendor.whatsapp_number|default:vendor.phone|cut:'+'|cut:' ' }}?text=Bonjour,%20je%20suis%20int%C3%A9ress%C3%A9%20par%20votre%20produit%20{{ item.product.name|urlencode }}%20sur%20AgriLink%20CI" 
+                               target="_blank" rel="noopener noreferrer"
+                               class="w-full py-2 bg-green-50 hover:bg-green-100 text-green-800 font-semibold rounded-xl text-xs flex items-center justify-center space-x-1.5 transition">
+                                <i class="fa-brands fa-whatsapp"></i>
+                                <span>Commander ce produit</span>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-span-full py-12 text-center bg-white rounded-2xl border border-gray-200">
+                        <i class="fa-solid fa-box-open text-4xl text-gray-300 mb-3"></i>
+                        <p class="text-gray-500 font-medium">Ce vendeur n'a pas encore publié de stock.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <!-- =============================================================== -->
+            <!-- SECTION AVIS & COMMENTAIRES CLIENTS -->
+            <!-- =============================================================== -->
+            <section class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fa-solid fa-comment-dots mr-2 text-primary-900"></i>
+                    Avis des clients ({{ review_count }})
+                </h2>
+
+                <!-- Formulaire ajout avis -->
+                {% if user.is_authenticated %}
+                <form method="POST" class="mb-6 p-4 rounded-xl bg-gray-50 border border-gray-200 space-y-3">
+                    {% csrf_token %}
+                    <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Donner votre avis sur ce vendeur</h3>
+                    
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Votre note (1 à 5 étoiles)</label>
+                        {{ review_form.rating }}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Votre commentaire</label>
+                        {{ review_form.comment }}
+                    </div>
+
+                    <button type="submit" class="px-4 py-2 bg-primary-900 hover:bg-primary-950 text-white font-semibold rounded-xl text-xs shadow transition">
+                        Publier mon avis
+                    </button>
+                </form>
+                {% else %}
+                <div class="mb-6 p-4 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-600 flex items-center justify-between">
+                    <span>Connectez-vous pour laisser une évaluation.</span>
+                    <a href="{% url 'web:login' %}?next={{ request.path }}" class="font-bold text-primary-900 hover:underline">Se connecter</a>
+                </div>
+                {% endif %}
+
+                <!-- Liste des avis -->
+                <div class="space-y-4">
+                    {% for rev in reviews %}
+                    <div class="pb-4 border-b border-gray-100 last:border-0 last:pb-0">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="font-bold text-xs text-gray-800">{{ rev.author.first_name|default:rev.author.username }}</span>
+                            <span class="text-[11px] text-gray-400">{{ rev.created_at|date:"d M Y" }}</span>
+                        </div>
+                        <div class="flex items-center text-amber-400 text-xs mb-1">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= rev.rating %}
+                                    <i class="fa-solid fa-star"></i>
+                                {% else %}
+                                    <i class="fa-regular fa-star text-gray-300"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <p class="text-xs text-gray-600">{{ rev.comment }}</p>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-400 italic">Aucun avis pour l'instant. Soyez le premier à donner votre avis !</p>
+                    {% endfor %}
+                </div>
+            </section>
+
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- INFORMATIONS & COORDONNÉES DU VENDEUR (SIDEBAR) -->
+        <!-- =================================================================== -->
+        <div class="space-y-6">
+            <div class="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
+                <h3 class="font-bold text-gray-900 text-base pb-3 border-b border-gray-100">
+                    À propos du vendeur
+                </h3>
+
+                <div>
+                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Description</span>
+                    <p class="text-xs sm:text-sm text-gray-700 mt-1 leading-relaxed">
+                        {{ vendor.description|default:"Fournisseur agréé de produits agricoles sur le réseau AgriLink CI." }}
+                    </p>
+                </div>
+
+                <div>
+                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Localisation exacte</span>
+                    <p class="text-xs sm:text-sm text-gray-800 mt-1 font-medium">
+                        <i class="fa-solid fa-map-pin text-primary-600 mr-1.5"></i>
+                        {{ vendor.address|default:vendor.locality.name|default:"Non renseignée" }}
+                    </p>
+                    <p class="text-xs text-gray-500 ml-5">{{ vendor.region.name|default:"Côte d'Ivoire" }}</p>
+                </div>
+
+                <div>
+                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Téléphone direct</span>
+                    <p class="text-xs sm:text-sm text-gray-800 mt-1 font-semibold">
+                        <i class="fa-solid fa-phone text-primary-600 mr-1.5"></i>
+                        {{ vendor.phone|default:"Numéro masqué" }}
+                    </p>
+                </div>
+
+                {% if vendor.email %}
+                <div>
+                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Email</span>
+                    <p class="text-xs sm:text-sm text-gray-800 mt-1">
+                        <i class="fa-solid fa-envelope text-primary-600 mr-1.5"></i>
+                        {{ vendor.email }}
+                    </p>
+                </div>
+                {% endif %}
+
+                <div class="pt-3 border-t border-gray-100 text-xs text-gray-400 flex items-center justify-between">
+                    <span>Membre depuis</span>
+                    <span class="font-medium text-gray-600">{{ vendor.created_at|date:"F Y" }}</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function trackContact(vendorId, contactType) {
+        const formData = new FormData();
+        formData.append('type', contactType);
+        fetch(`/vendors/${vendorId}/track-contact/`, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': getCookie('csrftoken') },
+            body: formData
+        }).catch(err => console.error(err));
+    }
+</script>
+{% endblock %}

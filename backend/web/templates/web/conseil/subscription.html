@@ -1,0 +1,131 @@
+{% extends "web/base.html" %}
+
+{% block title %}Abonnement Conseil Pro — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gradient-to-r from-emerald-900 to-primary-950 text-white py-12 px-4 sm:px-6 lg:px-8 text-center">
+    <div class="max-w-3xl mx-auto">
+        <span class="px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider bg-white/10 text-amber-300 inline-block mb-3 border border-white/10">
+            <i class="fa-solid fa-crown mr-1"></i> Formules Conseil Pro
+        </span>
+        <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight">
+            Accédez à l'expertise agronomique de pointe
+        </h1>
+        <p class="mt-3 text-sm sm:text-base text-emerald-100">
+            Itinéraires techniques complets, guides de fertilisation CNRA, protocoles de traitement et assistance prioritaire de nos agronomes.
+        </p>
+    </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+
+    {% if is_active %}
+    <!-- Statut actif -->
+    <div class="p-6 rounded-3xl bg-green-50 border-2 border-green-300 text-green-900 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 rounded-2xl bg-green-500 text-white flex items-center justify-center text-2xl shadow-sm">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+            <div>
+                <h3 class="font-extrabold text-base">Votre abonnement Conseil Pro est ACTIF</h3>
+                <p class="text-xs text-green-700 mt-0.5">
+                    Valable jusqu'au {{ subscription.date_fin|date:"d F Y" }} (Formule {{ subscription.type_abonnement|title }})
+                </p>
+            </div>
+        </div>
+        <a href="{% url 'web:conseil-list' %}" class="px-5 py-2.5 bg-primary-900 hover:bg-primary-950 text-white font-bold text-xs rounded-xl shadow transition">
+            Consulter les guides Pro
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- ======================================================================= -->
+    <!-- GRILLE DES TARIFS CONSEIL PRO -->
+    <!-- ======================================================================= -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Formule Mensuelle -->
+        <div class="bg-white rounded-3xl border border-gray-200 p-8 shadow-sm hover:shadow-lg transition flex flex-col justify-between relative">
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-gray-500">Formule Flexible</span>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-gray-100 text-gray-700">1 Mois</span>
+                </div>
+
+                <div class="mt-4">
+                    <span class="text-4xl font-black text-gray-900">3 000</span>
+                    <span class="text-sm font-semibold text-gray-500">FCFA / mois</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Sans engagement, renouvelable chaque mois</p>
+
+                <ul class="mt-6 space-y-3 text-xs sm:text-sm text-gray-700">
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Accès illimité à tous les guides Conseil Pro</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Fiches dosages et traitements homologués</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Alertes météo et phytosanitaires SMS/Push</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2.5"></i> Outil de diagnostic rapide illimité</li>
+                </ul>
+            </div>
+
+            <form method="POST" class="mt-8">
+                {% csrf_token %}
+                <input type="hidden" name="plan" value="monthly">
+                <button type="submit" class="w-full py-3.5 bg-primary-900 hover:bg-primary-950 text-white font-bold rounded-2xl text-sm shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-credit-card"></i>
+                    <span>S'abonner (3 000 FCFA)</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Formule Annuelle -->
+        <div class="bg-gradient-to-b from-emerald-50/50 to-white rounded-3xl border-2 border-emerald-500 p-8 shadow-md hover:shadow-xl transition flex flex-col justify-between relative">
+            <span class="absolute -top-3.5 right-6 px-3.5 py-1 rounded-full text-xs font-black bg-emerald-600 text-white shadow-md uppercase tracking-wider">
+                Économisez 7 000 FCFA
+            </span>
+
+            <div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">Formule Annuelle</span>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">12 Mois</span>
+                </div>
+
+                <div class="mt-4">
+                    <span class="text-4xl font-black text-gray-900">29 000</span>
+                    <span class="text-sm font-semibold text-gray-500">FCFA / an</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">Soit environ 2 416 FCFA / mois seulement</p>
+
+                <ul class="mt-6 space-y-3 text-xs sm:text-sm text-gray-700">
+                    <li class="flex items-center"><i class="fa-solid fa-check text-emerald-600 mr-2.5"></i> Tout le contenu Conseil Pro inclus</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-emerald-600 mr-2.5"></i> Accompagnement prioritaire WhatsApp agronome</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-emerald-600 mr-2.5"></i> Téléchargement des fiches PDF imprimables</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-emerald-600 mr-2.5"></i> Calendrier prévisionnel des semis & récoltes</li>
+                </ul>
+            </div>
+
+            <form method="POST" class="mt-8">
+                {% csrf_token %}
+                <input type="hidden" name="plan" value="annual">
+                <button type="submit" class="w-full py-3.5 bg-accent hover:bg-orange-600 text-white font-extrabold rounded-2xl text-sm shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-crown text-amber-300"></i>
+                    <span>Prendre l'abonnement annuel (29 000 FCFA)</span>
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- Sécurisation Chariow -->
+    <div class="p-6 rounded-2xl bg-white border border-gray-200 text-center space-y-3">
+        <h4 class="text-xs font-bold uppercase tracking-wider text-gray-400">Paiement Sécurisé avec Chariow</h4>
+        <div class="flex flex-wrap items-center justify-center gap-3 text-xs font-semibold text-gray-600">
+            <span class="px-3 py-1 bg-gray-100 rounded-lg"><i class="fa-solid fa-mobile mr-1 text-orange-500"></i> Orange Money</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg"><i class="fa-solid fa-mobile mr-1 text-yellow-500"></i> MTN Mobile Money</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg"><i class="fa-solid fa-mobile mr-1 text-blue-500"></i> Wave Côte d'Ivoire</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg"><i class="fa-solid fa-mobile mr-1 text-blue-800"></i> Moov Money</span>
+            <span class="px-3 py-1 bg-gray-100 rounded-lg"><i class="fa-solid fa-credit-card mr-1 text-green-700"></i> Carte Bancaire</span>
+        </div>
+        <p class="text-[11px] text-gray-400">Activation immédiate dès confirmation du règlement.</p>
+    </div>
+
+</div>
+{% endblock %}

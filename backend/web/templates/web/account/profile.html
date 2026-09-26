@@ -1,0 +1,141 @@
+{% extends "web/base.html" %}
+
+{% block title %}Mon Profil & Paramètres — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gray-100 py-6 border-b border-gray-200">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">Mon Compte</h1>
+        <p class="text-sm text-gray-600 mt-1">Gérez vos coordonnées personnelles, vos cultures d'intérêt et votre sécurité</p>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- Résumé compte -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div class="flex items-center space-x-4">
+            <div class="w-16 h-16 rounded-2xl bg-primary-900 text-white flex items-center justify-center text-2xl font-black shadow-md">
+                {{ user.first_name|default:user.username|slice:":1"|upper }}
+            </div>
+            <div>
+                <h2 class="text-xl font-extrabold text-gray-900">{{ user.first_name|default:user.username }}</h2>
+                <p class="text-xs text-gray-500">{{ account.phone_e164|default:user.username }}</p>
+                <div class="mt-2 flex flex-wrap gap-2">
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">
+                        {{ account.get_role_display|default:"Utilisateur" }}
+                    </span>
+                    {% if is_pro_seller %}
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-amber-100 text-amber-800 border border-amber-300">
+                        Vendeur Pro
+                    </span>
+                    {% endif %}
+                    {% if is_pro_conseil %}
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        Abonné Conseil Pro
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'web:favorites' %}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-heart text-red-500"></i>
+                <span>Mes favoris</span>
+            </a>
+            <a href="{% url 'web:notifications' %}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-bell text-primary-700"></i>
+                <span>Alertes</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Grille des formulaires -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        
+        <!-- Formulaire Informations Personnelles -->
+        <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+            <h3 class="font-bold text-gray-900 text-base mb-4 pb-2 border-b border-gray-100 flex items-center">
+                <i class="fa-solid fa-user-pen mr-2 text-primary-900"></i>
+                Informations du Profil
+            </h3>
+
+            <form method="POST" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_profile">
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nom complet</label>
+                    {{ profile_form.full_name }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Email</label>
+                    {{ profile_form.email }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Cultures d'intérêt</label>
+                    {{ profile_form.culture_profile }}
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Région</label>
+                        {{ profile_form.region }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Localité</label>
+                        {{ profile_form.locality }}
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-primary-900 hover:bg-primary-950 text-white font-bold rounded-2xl text-xs shadow transition mt-2">
+                    Mettre à jour mon profil
+                </button>
+            </form>
+        </div>
+
+        <!-- Formulaire Changement de Mot de Passe -->
+        <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+            <h3 class="font-bold text-gray-900 text-base mb-4 pb-2 border-b border-gray-100 flex items-center">
+                <i class="fa-solid fa-shield-halved mr-2 text-primary-900"></i>
+                Sécurité & Mot de Passe
+            </h3>
+
+            <form method="POST" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="change_password">
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Ancien mot de passe</label>
+                    {{ password_form.old_password }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nouveau mot de passe</label>
+                    {{ password_form.new_password }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Confirmer le nouveau mot de passe</label>
+                    {{ password_form.confirm_new_password }}
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-2xl text-xs shadow transition mt-2">
+                    Modifier le mot de passe
+                </button>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    setupRegionLocalityCascade('id_region', 'id_locality');
+</script>
+{% endblock %}

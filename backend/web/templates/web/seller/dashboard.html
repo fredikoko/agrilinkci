@@ -1,0 +1,204 @@
+{% extends "web/base.html" %}
+
+{% block title %}Tableau de Bord Vendeur — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gray-100 py-6 border-b border-gray-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">Espace Vendeur</h1>
+                    {% if is_pro %}
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-300">
+                        VENDEUR PRO
+                    </span>
+                    {% else %}
+                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">
+                        Compte Gratuit
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="text-sm text-gray-600 mt-1">Supervisez vos performances commerciales, vos contacts et vos stocks</p>
+            </div>
+
+            <!-- Liens rapides -->
+            <div class="flex flex-wrap items-center gap-2">
+                {% if vendor %}
+                <a href="{% url 'web:vendor-detail' vendor.id %}" target="_blank" class="px-4 py-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 font-semibold text-xs rounded-xl shadow-sm transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-primary-700"></i>
+                    <span>Voir ma fiche publique</span>
+                </a>
+                {% endif %}
+                <a href="{% url 'web:seller-stock' %}" class="px-4 py-2 bg-primary-900 hover:bg-primary-950 text-white font-bold text-xs rounded-xl shadow transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <span>Gérer mes stocks</span>
+                </a>
+                <a href="{% url 'web:seller-subscription' %}" class="px-4 py-2 bg-accent hover:bg-orange-600 text-white font-bold text-xs rounded-xl shadow transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-crown text-amber-300"></i>
+                    <span>{% if is_pro %}Mon Abonnement Pro{% else %}Passer Vendeur Pro{% endif %}</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- ======================================================================= -->
+    <!-- STATISTIQUES & ANALYTICS (SELLER ANALYTICS) -->
+    <!-- ======================================================================= -->
+    <section>
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+            <i class="fa-solid fa-chart-line mr-2 text-primary-900"></i>
+            Statistiques & Contacts Acheteurs
+        </h2>
+
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Vues profil -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl flex-shrink-0">
+                    <i class="fa-solid fa-eye"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 font-medium block">Vues de la fiche</span>
+                    <span class="text-2xl font-black text-gray-900">{{ stats.profile_views }}</span>
+                </div>
+            </div>
+
+            <!-- Clics WhatsApp -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-green-50 text-green-600 flex items-center justify-center text-xl flex-shrink-0">
+                    <i class="fa-brands fa-whatsapp"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 font-medium block">Contacts WhatsApp</span>
+                    <span class="text-2xl font-black text-gray-900">{{ stats.whatsapp_clicks }}</span>
+                </div>
+            </div>
+
+            <!-- Clics Appel -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-50 text-primary-800 flex items-center justify-center text-xl flex-shrink-0">
+                    <i class="fa-solid fa-phone"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 font-medium block">Appels téléphoniques</span>
+                    <span class="text-2xl font-black text-gray-900">{{ stats.call_clicks }}</span>
+                </div>
+            </div>
+
+            <!-- Produits actifs -->
+            <div class="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center space-x-4">
+                <div class="w-12 h-12 rounded-xl bg-orange-50 text-accent flex items-center justify-center text-xl flex-shrink-0">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-500 font-medium block">Articles en stock</span>
+                    <span class="text-2xl font-black text-gray-900">{{ stats.products_count }}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- ÉDITION DE LA FICHE VENDEUR -->
+    <!-- ======================================================================= -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2 bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+            <h2 class="text-lg font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100 flex items-center">
+                <i class="fa-solid fa-store mr-2 text-primary-900"></i>
+                Paramètres de ma Fiche Vendeur
+            </h2>
+
+            <form method="POST" class="space-y-4">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update_vendor">
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nom commercial de votre activité</label>
+                    {{ vendor_form.name }}
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Type de vendeur</label>
+                        {{ vendor_form.vendor_type }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Téléphone d'appel</label>
+                        {{ vendor_form.phone }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Numéro WhatsApp (avec indicatif)</label>
+                        {{ vendor_form.whatsapp_number }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Email professionnel</label>
+                        {{ vendor_form.email }}
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Région</label>
+                        {{ vendor_form.region }}
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Localité</label>
+                        {{ vendor_form.locality }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Adresse physique / Marché</label>
+                    {{ vendor_form.address }}
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Description courte de vos produits et services</label>
+                    {{ vendor_form.description }}
+                </div>
+
+                <div class="pt-2">
+                    <label class="inline-flex items-center cursor-pointer">
+                        {{ vendor_form.is_active }}
+                        <span class="ml-2 text-xs font-semibold text-gray-700">Fiche active et visible dans l'annuaire public</span>
+                    </label>
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-primary-900 hover:bg-primary-950 text-white font-bold rounded-2xl text-sm shadow transition mt-2">
+                    Enregistrer les modifications
+                </button>
+            </form>
+        </div>
+
+        <!-- Sidebar Aide & Avantages Pro -->
+        <div class="space-y-6">
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-3xl border border-amber-200 p-6 shadow-sm">
+                <div class="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center text-2xl mb-4 shadow">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+                <h3 class="font-extrabold text-base text-gray-900">Avantages Vendeur Pro</h3>
+                <p class="text-xs text-gray-600 mt-1">Boostez vos ventes pour seulement 5 000 FCFA / mois :</p>
+                <ul class="mt-4 space-y-2 text-xs text-gray-700">
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2"></i> Badge officiel Vérifié & Pro</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2"></i> Affichage prioritaire en haut des recherches</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2"></i> Produits illimités au catalogue</li>
+                    <li class="flex items-center"><i class="fa-solid fa-check text-green-600 mr-2"></i> Statistiques détaillées des appels</li>
+                </ul>
+
+                <a href="{% url 'web:seller-subscription' %}" class="mt-5 block w-full py-2.5 bg-accent hover:bg-orange-600 text-white font-bold text-center rounded-xl text-xs shadow transition">
+                    {% if is_pro %}Gérer mon abonnement{% else %}Activer le forfait Pro{% endif %}
+                </a>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

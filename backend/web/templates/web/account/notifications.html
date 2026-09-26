@@ -1,0 +1,95 @@
+{% extends "web/base.html" %}
+
+{% block title %}Notifications & Alertes Météo — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-gray-100 py-6 border-b border-gray-200">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900">Notifications & Alertes</h1>
+            <p class="text-sm text-gray-600 mt-1">Alertes sanitaires, météo agricole et messages système</p>
+        </div>
+
+        <form method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="mark_all_read">
+            <button type="submit" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold text-xs rounded-xl shadow-sm transition">
+                Tout marquer comme lu
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- ======================================================================= -->
+    <!-- ALERTES PHYTOSANITAIRES & METEO NATIONALES / RÉGIONALES -->
+    <!-- ======================================================================= -->
+    <section>
+        <h2 class="text-base font-bold text-gray-900 mb-4 flex items-center">
+            <i class="fa-solid fa-triangle-exclamation mr-2 text-amber-600"></i>
+            Alertes Actives en Côte d'Ivoire
+        </h2>
+
+        <div class="space-y-3">
+            {% for a in active_alerts %}
+            <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex items-start space-x-3 shadow-sm">
+                <div class="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-lg flex-shrink-0">
+                    <i class="fa-solid fa-bolt"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                        <span class="font-extrabold text-sm">{{ a.titre }}</span>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase {% if a.niveau == 'critique' %}bg-red-200 text-red-800{% else %}bg-amber-200 text-amber-800{% endif %}">
+                            {{ a.niveau }}
+                        </span>
+                    </div>
+                    <p class="text-xs sm:text-sm text-amber-800 mt-1 leading-relaxed">{{ a.message }}</p>
+                    <div class="mt-2 flex items-center space-x-3 text-[11px] text-amber-700">
+                        <span><i class="fa-regular fa-calendar mr-1"></i> Depuis le {{ a.date_debut|date:"d M Y" }}</span>
+                        {% if a.region %}
+                        <span><i class="fa-solid fa-map-pin mr-1"></i> {{ a.region.name }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-xs text-gray-400 italic">Aucune alerte phytosanitaire ou météo critique en cours.</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- NOTIFICATIONS PERSONNELLES -->
+    <!-- ======================================================================= -->
+    <section>
+        <h2 class="text-base font-bold text-gray-900 mb-4 flex items-center">
+            <i class="fa-solid fa-bell mr-2 text-primary-900"></i>
+            Messages & Notifications de votre Compte
+        </h2>
+
+        <div class="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm divide-y divide-gray-100">
+            {% for notif in notifications %}
+            <div class="p-4 sm:p-5 flex items-start space-x-4 {% if not notif.is_read %}bg-emerald-50/40{% endif %}">
+                <div class="w-10 h-10 rounded-xl {% if not notif.is_read %}bg-primary-900 text-white{% else %}bg-gray-100 text-gray-500{% endif %} flex items-center justify-center text-sm flex-shrink-0">
+                    <i class="fa-solid fa-bell"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-xs sm:text-sm text-gray-900">{{ notif.title }}</h4>
+                        <span class="text-[11px] text-gray-400">{{ notif.created_at|date:"d M, H:i" }}</span>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-1 leading-relaxed">{{ notif.body }}</p>
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-12 text-center text-gray-400">
+                <i class="fa-regular fa-bell-slash text-3xl mb-2"></i>
+                <p class="text-xs">Vous n'avez aucune notification pour l'instant.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+</div>
+{% endblock %}
