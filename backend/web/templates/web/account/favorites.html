@@ -117,5 +117,62 @@
         </div>
     </section>
 
+    <!-- ======================================================================= -->
+    <!-- ARTICLES DE CONSEIL FAVORIS (issu de FavoritesScreen) -->
+    <!-- ======================================================================= -->
+    <section>
+        <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+            <i class="fa-solid fa-book-open mr-2 text-primary-900"></i>
+            Conseils & Fiches Sauvegardés ({{ favorite_articles|length }})
+        </h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {% for article in favorite_articles %}
+            <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between" id="fav-article-{{ article.id }}">
+                <div>
+                    <div class="flex items-start justify-between">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-primary-100 text-primary-900">
+                            {{ article.categorie.nom|default:"Guide agricole" }}
+                        </span>
+
+                        <button onclick="toggleFavorite('article', {{ article.id }}, this)" class="p-1 text-red-500 hover:text-gray-400 transition" title="Retirer des favoris">
+                            <i class="fa-solid fa-heart text-base"></i>
+                        </button>
+                    </div>
+
+                    <h3 class="font-bold text-gray-900 text-base mt-3">
+                        <a href="{% url 'web:conseil-detail' article.slug %}" class="hover:text-primary-900">
+                            {{ article.titre }}
+                        </a>
+                    </h3>
+
+                    <p class="text-xs text-gray-500 mt-1 line-clamp-2">
+                        {{ article.resume|default:article.contenu|striptags }}
+                    </p>
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between text-xs">
+                    <a href="{% url 'web:conseil-detail' article.slug %}" class="font-bold text-primary-900 hover:underline">
+                        Lire le guide complet →
+                    </a>
+                    {% if article.culture %}
+                    <span class="text-[11px] text-gray-500 font-medium">
+                        🌱 {{ article.culture }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full py-10 text-center bg-white rounded-3xl border border-gray-200">
+                <i class="fa-regular fa-bookmark text-3xl text-gray-300 mb-2"></i>
+                <p class="text-gray-500 text-sm">Vous n'avez pas encore sauvegardé de fiches conseils.</p>
+                <a href="{% url 'web:conseil-list' %}" class="inline-block mt-3 text-xs font-bold text-primary-900 underline">
+                    Explorer les conseils agricoles
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
 </div>
 {% endblock %}

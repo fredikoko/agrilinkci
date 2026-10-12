@@ -1,0 +1,110 @@
+{% extends "web/base.html" %}
+
+{% block title %}Alertes Agricoles — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-primary-900 text-white py-8">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6">
+        <a href="{% url 'web:conseil-list' %}" class="inline-flex items-center text-xs font-semibold text-green-200 hover:text-white mb-3">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> Retour aux conseils
+        </a>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Alertes Agricoles</h1>
+        <p class="text-sm text-green-100 mt-1">Alertes phytosanitaires, prévisions météo et recommandations saisonnières officielles.</p>
+    </div>
+</div>
+
+<div class="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+    <!-- Onglets de filtrage (Toutes les alertes vs Ma région) -->
+    <div class="flex items-center space-x-2 border-b border-gray-200 pb-3">
+        <a href="{% url 'web:alertes-list' %}?filter=all" class="px-4 py-2 rounded-xl text-xs font-bold transition {% if filter_mode != 'my_region' %}bg-primary-900 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+            Toutes les alertes ({{ total_active }})
+        </a>
+        {% if user_region %}
+        <a href="{% url 'web:alertes-list' %}?filter=my_region" class="px-4 py-2 rounded-xl text-xs font-bold transition {% if filter_mode == 'my_region' %}bg-primary-900 text-white shadow-sm{% else %}bg-gray-100 text-gray-700 hover:bg-gray-200{% endif %}">
+            <i class="fa-solid fa-location-dot mr-1 text-primary-600"></i> Ma région : {{ user_region }}
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Liste des alertes (AlertesScreen) -->
+    <div class="space-y-4">
+        {% for alert in page_obj %}
+        <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between {% if alert.id in read_alert_ids %}opacity-75 bg-gray-50{% endif %}">
+            <div>
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <div class="flex items-center space-x-2">
+                        <span class="px-3 py-1 rounded-full text-xs font-extrabold uppercase
+                            {% if alert.priorite == 'URGENTE' %}bg-red-100 text-red-800 border border-red-200
+                            {% elif alert.priorite == 'HAUTE' %}bg-orange-100 text-orange-800 border border-orange-200
+                            {% else %}bg-blue-100 text-blue-800 border border-blue-200{% endif %}">
+                            <i class="fa-solid fa-triangle-exclamation mr-1"></i> {{ alert.get_priorite_display }}
+                        </span>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
+                            {{ alert.get_type_alerte_display }}
+                        </span>
+                    </div>
+
+                    <span class="text-xs text-gray-500 font-medium">
+                        <i class="fa-regular fa-clock mr-1"></i> Du {{ alert.date_debut|date:"d M Y" }}{% if alert.date_fin %} au {{ alert.date_fin|date:"d M Y" }}{% endif %}
+                    </span>
+                </div>
+
+                <h2 class="text-lg font-bold text-gray-900 mt-2">{{ alert.titre }}</h2>
+                <p class="text-xs text-primary-800 font-semibold mt-1">
+                    <i class="fa-solid fa-map-pin mr-1"></i> Zone concernée : {{ alert.region|default:"Nationale / Toutes régions" }}
+                    {% if alert.culture %} • Culture : {{ alert.culture }}{% endif %}
+                </p>
+
+                <p class="text-sm text-gray-700 mt-3 whitespace-pre-line leading-relaxed">
+                    {{ alert.message }}
+                </p>
+            </div>
+
+            <div class="mt-5 pt-3 border-t border-gray-100 flex items-center justify-between">
+                <div>
+                    {% if alert.id in read_alert_ids %}
+                    <span class="text-xs font-bold text-green-700 flex items-center">
+                        <i class="fa-solid fa-check-circle mr-1"></i> Alerte consultée
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if user.is_authenticated and alert.id not in read_alert_ids %}
+                <form method="post" action="{% url 'web:alerte-mark-read' alert.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="px-4 py-1.5 bg-gray-100 text-gray-800 text-xs font-bold rounded-xl hover:bg-primary-100 hover:text-primary-900 transition flex items-center">
+                        <i class="fa-solid fa-check mr-1.5"></i> Marquer comme lue
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-3xl border border-gray-200 p-12 text-center">
+            <i class="fa-regular fa-bell text-4xl text-gray-300 mb-3"></i>
+            <h3 class="text-base font-bold text-gray-800">Aucune alerte active pour le moment</h3>
+            <p class="text-xs text-gray-500 max-w-sm mx-auto mt-1">Toutes les conditions météo et sanitaires sont stables dans votre zone.</p>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="flex justify-center items-center space-x-2 py-4">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if filter_mode %}&filter={{ filter_mode }}{% endif %}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">
+            Précédent
+        </a>
+        {% endif %}
+        <span class="text-xs font-medium text-gray-600">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if filter_mode %}&filter={{ filter_mode }}{% endif %}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">
+            Suivant
+        </a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

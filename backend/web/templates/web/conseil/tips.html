@@ -1,0 +1,86 @@
+{% extends "web/base.html" %}
+
+{% block title %}Astuces & Conseils Pratiques — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-primary-900 text-white py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+        <a href="{% url 'web:home' %}" class="inline-flex items-center text-xs font-semibold text-green-200 hover:text-white mb-3">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> Retour à l'accueil
+        </a>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Conseils Pratiques Agricoles</h1>
+        <p class="text-sm text-green-100 mt-1">Recommandations fondamentales pour la réussite de vos cultures et la sécurité de vos intrants.</p>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+
+    <!-- Fiche 1 (issue de TipsScreen) -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm flex items-start space-x-5">
+        <div class="w-14 h-14 rounded-2xl bg-primary-100 text-primary-900 flex items-center justify-center text-2xl flex-shrink-0">
+            🌱
+        </div>
+        <div>
+            <h2 class="text-lg font-bold text-gray-900">Bien choisir ses semences</h2>
+            <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+                Privilégiez toujours des semences certifiées et adaptées à votre zone agro-écologique. Vérifiez systématiquement le taux de germination indiqué, la date limite de péremption ainsi que l'intégrité de l'emballage d'origine.
+            </p>
+            <div class="mt-4">
+                <a href="{% url 'web:vendor-list' %}?q=semence" class="text-xs font-bold text-primary-900 hover:underline">
+                    Trouver des vendeurs de semences agréés →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fiche 2 (issue de TipsScreen) -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm flex items-start space-x-5">
+        <div class="w-14 h-14 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-2xl flex-shrink-0">
+            📦
+        </div>
+        <div>
+            <h2 class="text-lg font-bold text-gray-900">Stocker les intrants et produits de traitement</h2>
+            <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+                Conservez vos produits phytosanitaires et engrais dans un local dédié, sec, bien ventilé, sous clé et impérativement hors de portée des enfants et des animaux domestiques. Ne transvasez jamais un produit dans une bouteille alimentaire.
+            </p>
+        </div>
+    </div>
+
+    <!-- Fiche 3 (issue de TipsScreen) -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm flex items-start space-x-5">
+        <div class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-800 flex items-center justify-center text-2xl flex-shrink-0">
+            💬
+        </div>
+        <div>
+            <h2 class="text-lg font-bold text-gray-900">Demander conseil avant application</h2>
+            <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+                Contactez plusieurs distributeurs ou techniciens agricoles locaux pour comparer les disponibilités, les molécules recommandées et les doses exactes par hectare afin d'éviter tout surdosage nuisible aux sols.
+            </p>
+            <div class="mt-4">
+                <a href="{% url 'web:conseil-diagnostic' %}" class="text-xs font-bold text-accent hover:underline">
+                    Lancer notre diagnostic phytosanitaire →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fiche 4 additionnelle -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm flex items-start space-x-5">
+        <div class="w-14 h-14 rounded-2xl bg-green-100 text-green-800 flex items-center justify-center text-2xl flex-shrink-0">
+            🚜
+        </div>
+        <div>
+            <h2 class="text-lg font-bold text-gray-900">Planifier la mécanisation et la main d'œuvre</h2>
+            <p class="text-sm text-gray-600 mt-2 leading-relaxed">
+                Anticipez la réservation de vos prestations mécanisées (labour, pulvérisation par drone, récolte) au moins 2 semaines à l'avance pour respecter scrupuleusement votre calendrier cultural.
+            </p>
+            <div class="mt-4">
+                <a href="{% url 'web:provider-list' %}" class="text-xs font-bold text-primary-900 hover:underline">
+                    Consulter l'annuaire des prestataires →
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

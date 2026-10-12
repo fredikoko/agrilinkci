@@ -163,6 +163,10 @@ class Alerte(models.Model):
         maintenant = timezone.now()
         return self.est_active and self.date_debut <= maintenant and (not self.date_fin or maintenant <= self.date_fin)
 
+    @property
+    def niveau(self):
+        return self.priorite.lower()
+
 
 class AlerteLue(models.Model):
     utilisateur = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alertes_lues")

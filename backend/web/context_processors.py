@@ -13,6 +13,7 @@ def web_context(request):
         "unread_notifications_count": 0,
         "user_favorite_vendor_ids": set(),
         "user_favorite_product_ids": set(),
+        "user_favorite_article_ids": set(),
         "nav_regions": Region.objects.prefetch_related("localities").all()[:15],
     }
 
@@ -35,7 +36,7 @@ def web_context(request):
 
         try:
             context["unread_notifications_count"] = AppNotification.objects.filter(
-                user=request.user, is_read=False
+                recipient=request.user, is_read=False
             ).count()
         except Exception:
             context["unread_notifications_count"] = 0
@@ -46,5 +47,12 @@ def web_context(request):
         context["user_favorite_product_ids"] = set(
             ProductFavorite.objects.filter(user=request.user).values_list("product_id", flat=True)
         )
+        try:
+            from conseil.models import ArticleFavori
+            context["user_favorite_article_ids"] = set(
+                ArticleFavori.objects.filter(utilisateur=request.user).values_list("article_id", flat=True)
+            )
+        except Exception:
+            context["user_favorite_article_ids"] = set()
 
     return context

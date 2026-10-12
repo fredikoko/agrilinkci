@@ -1,0 +1,178 @@
+{% extends "web/base.html" %}
+
+{% block title %}Recherche Avancée — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-primary-900 text-white py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <a href="{% url 'web:home' %}" class="inline-flex items-center text-xs font-semibold text-green-200 hover:text-white mb-3">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> Retour à l'accueil
+        </a>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Recherche Avancée</h1>
+        <p class="text-sm text-green-100 mt-1">Trouvez rapidement les intrants, semences et fournisseurs selon vos critères précis de proximité et d'activité.</p>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Formulaire de filtres avancés (AdvancedSearchScreen) -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm sticky top-24">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fa-solid fa-sliders text-primary-900 mr-2"></i> Critères de Recherche
+                </h2>
+
+                <form method="get" action="{% url 'web:advanced-search' %}" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Mots-clés / Produit</label>
+                        {{ form.q }}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Type de vendeur</label>
+                        {{ form.vendor_type }}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Rayon géographique</label>
+                        {{ form.radius_km }}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Région</label>
+                        {{ form.region }}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Localité</label>
+                        {{ form.locality }}
+                    </div>
+
+                    <div class="pt-2 flex flex-col gap-2">
+                        <button type="submit" class="w-full py-3 bg-accent text-white font-bold rounded-xl shadow-md hover:bg-orange-600 transition flex items-center justify-center">
+                            <i class="fa-solid fa-magnifying-glass mr-2"></i> Lancer la recherche
+                        </button>
+                        <a href="{% url 'web:advanced-search' %}" class="w-full py-2.5 bg-gray-100 text-gray-700 font-semibold text-center rounded-xl hover:bg-gray-200 transition text-sm">
+                            Réinitialiser
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Résultats de la recherche (ResultsScreen) -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                    <h2 class="text-lg font-bold text-gray-900">Résultats correspondants</h2>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        {% if has_searched %}
+                            <span class="font-semibold text-primary-900">{{ total_results }} vendeur(s) trouvé(s)</span> avec vos critères de proximité
+                        {% else %}
+                            Explorez l'ensemble des vendeurs agricoles référencés
+                        {% endif %}
+                    </p>
+                </div>
+                {% if criteria.radius_km %}
+                <span class="inline-flex items-center px-3 py-1 bg-amber-50 text-amber-800 text-xs font-bold rounded-full border border-amber-200 self-start sm:self-auto">
+                    <i class="fa-solid fa-location-crosshairs mr-1.5"></i> Rayon : {{ criteria.radius_km }} km
+                </span>
+                {% endif %}
+            </div>
+
+            <!-- Liste des cartes vendeurs -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {% for vendor in page_obj %}
+                <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-start justify-between">
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary-100 text-primary-900 uppercase">
+                                {{ vendor.vendor_type }}
+                            </span>
+                            {% if vendor.is_verified %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800" title="Vendeur Pro Vérifié">
+                                <i class="fa-solid fa-certificate mr-1 text-accent"></i> Vérifié
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <h3 class="font-bold text-gray-900 text-base mt-2">
+                            <a href="{% url 'web:vendor-detail' vendor.id %}" class="hover:text-primary-900">
+                                {{ vendor.name }}
+                            </a>
+                        </h3>
+
+                        <p class="text-xs text-gray-500 mt-1 flex items-center">
+                            <i class="fa-solid fa-location-dot text-primary-900 mr-1.5"></i>
+                            {{ vendor.locality.name|default:"Localité non précisée" }}, {{ vendor.region.name|default:"" }}
+                        </p>
+
+                        <!-- Produits en stock aperçu -->
+                        <div class="mt-3 bg-gray-50 rounded-2xl p-3 border border-gray-100">
+                            <p class="text-xs font-bold text-gray-700 mb-1 flex items-center">
+                                <i class="fa-solid fa-cubes text-gray-500 mr-1.5"></i> Stock disponible :
+                            </p>
+                            <p class="text-xs text-gray-600 line-clamp-2">
+                                {% for item in vendor.stock_items.all|slice:":3" %}
+                                    <span class="inline-block bg-white px-2 py-0.5 rounded-md border border-gray-200 text-gray-800 mr-1 mb-1 font-medium">
+                                        {{ item.product.name }}
+                                    </span>
+                                {% empty %}
+                                    <span class="text-gray-400 italic">Disponibilité à confirmer</span>
+                                {% endfor %}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                        <a href="{% url 'web:vendor-detail' vendor.id %}" class="text-xs font-bold text-primary-900 hover:underline">
+                            Voir le détail →
+                        </a>
+                        <div class="flex items-center space-x-2">
+                            {% if vendor.phone %}
+                            <a href="tel:{{ vendor.phone }}" class="w-8 h-8 rounded-full bg-primary-100 text-primary-900 flex items-center justify-center text-xs hover:bg-primary-200" title="Appeler">
+                                <i class="fa-solid fa-phone"></i>
+                            </a>
+                            {% endif %}
+                            {% if vendor.whatsapp_number or vendor.phone %}
+                            <a href="https://wa.me/{{ vendor.whatsapp_number|default:vendor.phone|cut:'+'|cut:' ' }}" target="_blank" class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-xs hover:bg-green-600" title="WhatsApp">
+                                <i class="fa-brands fa-whatsapp"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-span-full bg-white rounded-3xl border border-gray-200 p-12 text-center">
+                    <i class="fa-solid fa-box-open text-4xl text-gray-300 mb-3"></i>
+                    <h3 class="text-base font-bold text-gray-800">Aucun vendeur trouvé pour ces critères</h3>
+                    <p class="text-xs text-gray-500 max-w-sm mx-auto mt-1">Essayez d'élargir le rayon kilométrique ou sélectionnez une autre localité.</p>
+                    <a href="{% url 'web:advanced-search' %}" class="inline-block mt-4 px-4 py-2 bg-primary-900 text-white text-xs font-bold rounded-xl hover:bg-green-800 transition">
+                        Réinitialiser les critères
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <div class="flex justify-center items-center space-x-2 py-4">
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if criteria.q %}&q={{ criteria.q }}{% endif %}{% if criteria.vendor_type %}&vendor_type={{ criteria.vendor_type }}{% endif %}{% if criteria.radius_km %}&radius_km={{ criteria.radius_km }}{% endif %}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">
+                    Précédent
+                </a>
+                {% endif %}
+                <span class="text-xs font-medium text-gray-600">Page {{ page_obj.number }} sur {{ page_obj.paginator.num_pages }}</span>
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if criteria.q %}&q={{ criteria.q }}{% endif %}{% if criteria.vendor_type %}&vendor_type={{ criteria.vendor_type }}{% endif %}{% if criteria.radius_km %}&radius_km={{ criteria.radius_km }}{% endif %}" class="px-3 py-1.5 border border-gray-300 rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50">
+                    Suivant
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

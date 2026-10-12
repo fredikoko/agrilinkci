@@ -101,25 +101,38 @@
         </div>
         {% endif %}
 
-        <!-- Partage & Feedback -->
+        <!-- Actions de l'article (issu de ArticleDetailScreen) -->
         <div class="pt-6 border-t border-gray-100 flex flex-wrap items-center justify-between gap-4">
-            <div class="flex items-center space-x-3">
-                <span class="text-xs font-bold text-gray-600">Partager :</span>
+            <div class="flex flex-wrap items-center gap-3">
+                {% if user.is_authenticated %}
+                <button onclick="toggleFavorite('article', {{ article.id }}, this)" 
+                        class="px-4 py-2 rounded-xl text-xs font-bold border transition flex items-center space-x-1.5 {% if article.id in user_favorite_article_ids %}bg-red-50 text-red-600 border-red-200{% else %}bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100{% endif %}">
+                    <i class="{% if article.id in user_favorite_article_ids %}fa-solid{% else %}fa-regular{% endif %} fa-heart text-sm"></i>
+                    <span>{% if article.id in user_favorite_article_ids %}Retirer des favoris{% else %}Ajouter aux favoris{% endif %}</span>
+                </button>
+                {% endif %}
+
+                <!-- Partage WhatsApp (ArticleDetailScreen) -->
                 <a href="https://wa.me/?text={{ article.titre|urlencode }}%20{{ request.build_absolute_uri|urlencode }}" 
                    target="_blank" rel="noopener noreferrer"
-                   class="w-9 h-9 rounded-full bg-green-500 text-white flex items-center justify-center text-sm hover:bg-green-600 transition shadow-sm">
-                    <i class="fa-brands fa-whatsapp"></i>
+                   class="px-4 py-2 rounded-xl bg-green-500 text-white text-xs font-bold hover:bg-green-600 transition flex items-center space-x-1.5 shadow-sm">
+                    <i class="fa-brands fa-whatsapp text-sm"></i>
+                    <span>Partager sur WhatsApp</span>
                 </a>
-                <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}" 
-                   target="_blank" rel="noopener noreferrer"
-                   class="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm hover:bg-blue-700 transition shadow-sm">
-                    <i class="fa-brands fa-facebook-f"></i>
+
+                <!-- Voir les vendeurs associés (ArticleDetailScreen) -->
+                {% if article.culture %}
+                <a href="{% url 'web:vendor-list' %}?q={{ article.culture|urlencode }}" 
+                   class="px-4 py-2 rounded-xl bg-primary-100 text-primary-900 text-xs font-bold hover:bg-primary-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-store text-sm"></i>
+                    <span>Vendeurs associés ({{ article.culture }})</span>
                 </a>
+                {% endif %}
             </div>
 
-            <a href="{% url 'web:conseil-diagnostic' %}" class="text-xs font-bold text-primary-900 hover:underline flex items-center">
+            <a href="{% url 'web:conseil-diagnostic' %}" class="text-xs font-bold text-accent hover:underline flex items-center">
                 <i class="fa-solid fa-stethoscope mr-1.5"></i>
-                Effectuer un diagnostic pour cette culture
+                Lancer un diagnostic phytosanitaire →
             </a>
         </div>
     </article>

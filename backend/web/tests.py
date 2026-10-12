@@ -1,3 +1,5 @@
+from datetime import timedelta
+from django.utils import timezone
 from django.test import TestCase, Client
 from django.contrib.auth import get_user_model
 from django.urls import reverse
@@ -5,7 +7,7 @@ from directory_app.models import (
     Region, Locality, Category, Product, Vendor, VendorProduct,
     PhoneAccount, BuyerProfile, ServiceProvider, ProvidedService
 )
-from conseil.models import CategorieConseil, Article
+from conseil.models import CategorieConseil, Article, Alerte, AlerteLue, ArticleFavori
 
 User = get_user_model()
 
@@ -39,6 +41,25 @@ class WebFrontendTests(TestCase):
             locality=self.locality
         )
 
+        # Acheteur dédié buyeruser pour les tests de profil et alertes
+        self.buyer_user = User.objects.create_user(
+            username="buyeruser",
+            password="Password123!",
+            first_name="Acheteur Test",
+            email="acheteur@agrilink.ci"
+        )
+        self.buyer_account = PhoneAccount.objects.create(
+            user=self.buyer_user,
+            phone_e164="+2250700000003",
+            role=PhoneAccount.Role.BUYER
+        )
+        self.buyer_user_profile = BuyerProfile.objects.create(
+            user=self.buyer_user,
+            full_name="Acheteur Test",
+            region=self.region,
+            locality=self.locality
+        )
+
         # Vendeur et stock
         self.seller_user = User.objects.create_user(
             username="selleruser",
@@ -53,6 +74,7 @@ class WebFrontendTests(TestCase):
         self.vendor = Vendor.objects.create(
             owner=self.seller_user,
             name="Coopérative Vivriers d'Abidjan",
+            vendor_type=Vendor.VendorType.COOPERATIVE,
             region=self.region,
             locality=self.locality,
             is_active=True,
@@ -106,6 +128,19 @@ class WebFrontendTests(TestCase):
             title="Labour profond",
             rate=45000,
             unit="hectare"
+        )
+
+        # Alertes agricoles
+        self.alerte = Alerte.objects.create(
+            titre="Alerte Sécheresse",
+            message="Mesures d'irrigation recommandées dans le sud.",
+            region="Lagunes",
+            localite="Abidjan",
+            culture="Manioc",
+            priorite="URGENTE",
+            type_alerte="METEO",
+            date_debut=timezone.now() - timedelta(days=1),
+            est_active=True
         )
 
     def test_home_view(self):
@@ -236,3 +271,106 @@ class WebFrontendTests(TestCase):
         self.assertEqual(self.client.get("/accounts/login/").status_code, 200)
         self.assertEqual(self.client.get("/login/").status_code, 200)
         self.assertEqual(self.client.get("/connexion/").status_code, 200)
+
+    def test_advanced_search_view(self):
+        """Test recherche avancée avec mot-clé, type et rayon kilométrique."""
+        # Sans filtre
+        res = self.client.get(reverse("web:advanced-search"))
+        self.assertEqual(res.status_code, 200)
+        self.assertContains(res, "Recherche Avancée")
+
+        # Avec filtres
+        res_filter = self.client.get(reverse("web:advanced-search"), {
+            "q": "Manioc",
+            "vendor_type": "coopérative",
+            "radius_km": "10",
+        })
+        self.assertEqual(res_filter.status_code, 200)
+        self.assertContains(res_filter, "Coopérative Vivriers")
+        self.assertContains(res_filter, "Rayon : 10 km")
+
+    def test_conseil_dashboard_and_tips(self):
+        """Test Mon Espace Conseil et Conseils pratiques."""
+        # Non connecté
+        res_unauth = self.client.get(reverse("web:conseil-dashboard"))
+        self.assertEqual(res_unauth.status_code, 302)
+
+        # Connecté
+        self.client.login(username="buyeruser", password="Password123!")
+        res_dash = self.client.get(reverse("web:conseil-dashboard"))
+        self.assertEqual(res_dash.status_code, 200)
+        self.assertContains(res_dash, "Mon Espace Conseil")
+        self.assertContains(res_dash, "Mon Calendrier Cultural")
+
+        # Astuces pratiques
+        res_tips = self.client.get(reverse("web:tips"))
+        self.assertEqual(res_tips.status_code, 200)
+        self.assertContains(res_tips, "Bien choisir ses semences")
+
+    def test_alertes_and_mark_read(self):
+        """Test liste des alertes et marquage comme lue."""
+        self.client.login(username="buyeruser", password="Password123!")
+        res_list = self.client.get(reverse("web:alertes-list"))
+        self.assertEqual(res_list.status_code, 200)
+        self.assertContains(res_list, "Alerte Sécheresse")
+
+        # Marquer comme lue
+        res_read = self.client.post(reverse("web:alerte-mark-read", kwargs={"pk": self.alerte.pk}), follow=True)
+        self.assertEqual(res_read.status_code, 200)
+        self.assertContains(res_read, "marquée comme lue")
+
+    def test_seller_analytics_and_record_sale(self):
+        """Test tableau de bord analytique vendeur et enregistrement d'une vente directe."""
+        self.client.login(username="selleruser", password="Password123!")
+        res_analytics = self.client.get(reverse("web:seller-analytics"))
+        self.assertEqual(res_analytics.status_code, 200)
+        self.assertContains(res_analytics, "Tableau de Bord Analytique")
+
+        # Enregistrer une vente directe
+        post_sale = self.client.post(reverse("web:seller-analytics"), {
+            "product": self.product.id,
+            "quantity": 5,
+            "unit_price": 600,
+            "buyer_contact": "+2250709999999",
+            "notes": "Vente test comptoir",
+        }, follow=True)
+        self.assertEqual(post_sale.status_code, 200)
+        self.assertContains(post_sale, "Vente de 5")
+
+    def test_article_favorite_toggle(self):
+        """Test ajout et retrait d'un article de conseil en favoris."""
+        self.client.login(username="buyeruser", password="Password123!")
+        # Ajout
+        res_add = self.client.post(reverse("web:favorite-toggle"), {
+            "type": "article",
+            "id": self.article_free.id,
+        })
+        self.assertEqual(res_add.status_code, 200)
+        self.assertTrue(res_add.json()["is_favorited"])
+
+        # Retrait
+        res_rem = self.client.post(reverse("web:favorite-toggle"), {
+            "type": "article",
+            "id": self.article_free.id,
+        })
+        self.assertEqual(res_rem.status_code, 200)
+        self.assertFalse(res_rem.json()["is_favorited"])
+
+    def test_buyer_profile_view(self):
+        """Test configuration de la zone acheteur."""
+        self.client.login(username="buyeruser", password="Password123!")
+        res_get = self.client.get(reverse("web:buyer-profile"))
+        self.assertEqual(res_get.status_code, 200)
+        self.assertContains(res_get, "Mon Profil Acheteur")
+
+        # Sauvegarde
+        res_post = self.client.post(reverse("web:buyer-profile"), {
+            "full_name": "Acheteur Test Modifié",
+            "phone": "+2250700000001",
+            "email": "acheteur.modifie@exemple.ci",
+            "region": self.region.id,
+            "locality": self.locality.id,
+            "culture_profile": "Manioc, Cacao, Piment",
+        }, follow=True)
+        self.assertEqual(res_post.status_code, 200)
+

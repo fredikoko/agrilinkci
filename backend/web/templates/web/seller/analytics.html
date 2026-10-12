@@ -1,0 +1,188 @@
+{% extends "web/base.html" %}
+
+{% block title %}Analytique & Ventes — {{ vendor.name }}{% endblock %}
+
+{% block content %}
+<div class="bg-primary-900 text-white py-8">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <a href="{% url 'web:seller-dashboard' %}" class="inline-flex items-center text-xs font-semibold text-green-200 hover:text-white mb-3">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> Retour au tableau de bord vendeur
+        </a>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Tableau de Bord Analytique</h1>
+                <p class="text-sm text-green-100 mt-1">{{ vendor.name }} — Suivi des ventes directes et performances commerciales.</p>
+            </div>
+            <!-- Sélecteur de période (7, 30, 90 jours comme sur mobile) -->
+            <div class="flex items-center space-x-2 bg-primary-800 p-1 rounded-2xl border border-green-700">
+                <a href="?days=7" class="px-3 py-1.5 rounded-xl text-xs font-bold transition {% if days == 7 %}bg-white text-primary-900 shadow-sm{% else %}text-green-200 hover:text-white{% endif %}">
+                    7 jours
+                </a>
+                <a href="?days=30" class="px-3 py-1.5 rounded-xl text-xs font-bold transition {% if days == 30 %}bg-white text-primary-900 shadow-sm{% else %}text-green-200 hover:text-white{% endif %}">
+                    30 jours
+                </a>
+                <a href="?days=90" class="px-3 py-1.5 rounded-xl text-xs font-bold transition {% if days == 90 %}bg-white text-primary-900 shadow-sm{% else %}text-green-200 hover:text-white{% endif %}">
+                    90 jours
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Indicateurs clés de performance -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Chiffre d'Affaires</span>
+            <p class="text-2xl sm:text-3xl font-black text-primary-900 mt-1">{{ total_revenue|floatformat:0 }} FCFA</p>
+            <p class="text-xs text-gray-400 mt-1">Sur les {{ days }} derniers jours</p>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Ventes Enregistrées</span>
+            <p class="text-2xl sm:text-3xl font-black text-gray-900 mt-1">{{ sales_count }}</p>
+            <p class="text-xs text-gray-400 mt-1">Transactions conclues</p>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Quantité Totale Vendue</span>
+            <p class="text-2xl sm:text-3xl font-black text-accent mt-1">{{ total_quantity }} unités</p>
+            <p class="text-xs text-gray-400 mt-1">Sacs, flacons, semences...</p>
+        </div>
+
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Vente Moyenne (Panier)</span>
+            <p class="text-2xl sm:text-3xl font-black text-primary-700 mt-1">{{ average_sale|floatformat:0 }} FCFA</p>
+            <p class="text-xs text-gray-400 mt-1">Montant moyen par client</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+        <!-- Formulaire d'enregistrement d'une vente directe (issu de SellerAnalyticsScreen) -->
+        <div class="lg:col-span-1">
+            <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm sticky top-24">
+                <h2 class="text-lg font-bold text-gray-900 mb-2 flex items-center">
+                    <i class="fa-solid fa-cash-register text-primary-900 mr-2"></i>
+                    Enregistrer une Vente Directe
+                </h2>
+                <p class="text-xs text-gray-500 mb-5 leading-relaxed">
+                    Les commandes ne s'effectuent pas en ligne sur AgriLink CI. Saisissez ici les transactions conclues par appel ou au comptoir.
+                </p>
+
+                <form method="post" class="space-y-4">
+                    {% csrf_token %}
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Produit vendu <span class="text-red-500">*</span></label>
+                        {{ sale_form.product }}
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Quantité <span class="text-red-500">*</span></label>
+                            {{ sale_form.quantity }}
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Prix unitaire <span class="text-red-500">*</span></label>
+                            {{ sale_form.unit_price }}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Contact acheteur</label>
+                        {{ sale_form.buyer_contact }}
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">Observation / Note</label>
+                        {{ sale_form.notes }}
+                    </div>
+
+                    <button type="submit" class="w-full py-3 bg-primary-900 text-white font-bold rounded-xl shadow-md hover:bg-green-800 transition flex items-center justify-center text-sm">
+                        <i class="fa-solid fa-check mr-2"></i> Valider et enregistrer la vente
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Performances produits & Historique des ventes -->
+        <div class="lg:col-span-2 space-y-8">
+
+            <!-- Meilleures ventes -->
+            <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fa-solid fa-ranking-star text-accent mr-2"></i>
+                    Meilleures Ventes (Top Produits)
+                </h2>
+
+                <div class="space-y-3">
+                    {% for item in top_products %}
+                    <div class="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-gray-100">
+                        <div class="flex items-center space-x-3">
+                            <span class="w-8 h-8 rounded-xl bg-white border border-gray-200 font-black text-xs text-primary-900 flex items-center justify-center">
+                                #{{ forloop.counter }}
+                            </span>
+                            <div>
+                                <h3 class="font-bold text-gray-900 text-sm">{{ item.product_name }}</h3>
+                                <p class="text-xs text-gray-500">{{ item.quantity }} unité(s) vendue(s) ({{ item.count }} vente(s))</p>
+                            </div>
+                        </div>
+                        <span class="text-sm font-black text-primary-900">
+                            {{ item.revenue|floatformat:0 }} FCFA
+                        </span>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-gray-500 text-center py-6">Aucune vente enregistrée sur cette période.</p>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Historique récent des ventes -->
+            <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+                <h2 class="text-lg font-bold text-gray-900 mb-4 flex items-center">
+                    <i class="fa-solid fa-clock-rotate-left text-primary-900 mr-2"></i>
+                    Dernières Ventes Enregistrées
+                </h2>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead class="bg-gray-50 text-gray-500 uppercase border-b border-gray-200">
+                            <tr>
+                                <th class="py-3 px-3">Date</th>
+                                <th class="py-3 px-3">Produit</th>
+                                <th class="py-3 px-3">Quantité</th>
+                                <th class="py-3 px-3">Prix unitaire</th>
+                                <th class="py-3 px-3">Total FCFA</th>
+                                <th class="py-3 px-3">Acheteur</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100 text-gray-700">
+                            {% for sale in recent_sales %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="py-2.5 px-3 font-medium">{{ sale.sold_at|date:"d/m/Y H:i" }}</td>
+                                <td class="py-2.5 px-3 font-bold text-gray-900">{{ sale.product.name }}</td>
+                                <td class="py-2.5 px-3">{{ sale.quantity }}</td>
+                                <td class="py-2.5 px-3">{{ sale.unit_price }} FCFA</td>
+                                <td class="py-2.5 px-3 font-bold text-primary-900">{{ sale.total_price|default:sale.unit_price }} FCFA</td>
+                                <td class="py-2.5 px-3 text-gray-500">{{ sale.buyer_contact|default:"-" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="py-8 text-center text-gray-400">
+                                    Aucune transaction enregistrée. Utilisez le formulaire ci-contre pour consigner vos ventes.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "web/base.html" %}
+
+{% block title %}Vérification du compte — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="min-h-[75vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full bg-white rounded-3xl border border-gray-200 p-8 shadow-sm">
+        <div class="text-center mb-8">
+            <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary-100 text-primary-900 mb-4">
+                <i class="fa-solid fa-mobile-screen-button text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-black text-gray-900 tracking-tight">Confirmer l'inscription</h1>
+            <p class="text-xs text-gray-500 mt-2">
+                Un code de validation à 6 chiffres a été envoyé vers <span class="font-bold text-gray-800">{{ identity }}</span>.
+            </p>
+        </div>
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+            {{ form.identity }}
+            {{ form.password }}
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 text-center">
+                    Saisissez votre code à 6 chiffres
+                </label>
+                {{ form.code }}
+            </div>
+
+            <button type="submit" class="w-full py-3.5 bg-primary-900 text-white font-bold rounded-xl shadow-md hover:bg-green-800 transition flex items-center justify-center text-sm">
+                Valider le code et continuer
+            </button>
+        </form>
+
+        <div class="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between text-xs">
+            <a href="{% url 'web:signup' %}" class="font-bold text-gray-500 hover:underline">
+                Modifier l'identifiant
+            </a>
+            <a href="{% url 'web:login' %}" class="font-bold text-primary-900 hover:underline">
+                Se connecter
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

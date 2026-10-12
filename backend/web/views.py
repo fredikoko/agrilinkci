@@ -18,14 +18,19 @@ from directory_app.models import (
     Category, Region, Locality, Product, Vendor, VendorProduct,
     StockMovement, VendorFavorite, ProductFavorite, VendorReview,
     ServiceProvider, ProvidedService, ServiceProviderReview,
-    PhoneAccount, BuyerProfile, AppNotification, Payment, SellerSubscription
+    PhoneAccount, BuyerProfile, AppNotification, Payment, SellerSubscription,
+    VendorSale, OtpChallenge, EmailChallenge
+)
+from directory_app.auth_services import (
+    request_otp, verify_otp, request_email_code, verify_email_code,
+    request_password_reset, reset_password, OtpError
 )
 from directory_app.chariow_service import (
     initialize_subscription_payment, verify_and_activate_payment
 )
 from conseil.models import (
     CategorieConseil, Article, ArticleFavori, ArticleReview,
-    Alerte, ConseilSubscription
+    Alerte, AlerteLue, ConseilSubscription
 )
 from conseil.payment_service import (
     initialize_conseil_payment, verify_conseil_payment
@@ -33,7 +38,9 @@ from conseil.payment_service import (
 from .forms import (
     LoginForm, SignupForm, VendorForm, VendorProductForm, StockMovementForm,
     VendorReviewForm, ArticleReviewForm, ServiceProviderForm, ProvidedServiceForm,
-    UserProfileForm, PasswordChangeWebForm
+    UserProfileForm, PasswordChangeWebForm,
+    AdvancedSearchForm, RecordSaleForm, BuyerProfileConfigForm,
+    PasswordResetRequestForm, PasswordResetConfirmForm, VerifySignupCodeForm, VerifySellerPaymentForm
 )
 
 logger = logging.getLogger(__name__)
@@ -246,6 +253,52 @@ def vendor_track_contact(request, pk):
     return JsonResponse({"status": "tracked"})
 
 
+def advanced_search_view(request):
+    """Recherche avancée avec rayon géographique et type de vendeur (AdvancedSearchScreen + ResultsScreen)."""
+    form = AdvancedSearchForm(request.GET or None)
+    vendors_qs = Vendor.objects.filter(is_active=True, approval_status=Vendor.ApprovalStatus.APPROVED).select_related("region", "locality").prefetch_related("stock_items__product")
+
+    q = request.GET.get("q", "").strip()
+    vendor_type = request.GET.get("vendor_type", "").strip()
+    radius_km = request.GET.get("radius_km", "").strip()
+    region_id = request.GET.get("region", "")
+    locality_id = request.GET.get("locality", "")
+
+    has_searched = bool(q or vendor_type or radius_km or region_id or locality_id)
+
+    if q:
+        vendors_qs = vendors_qs.filter(
+            Q(name__icontains=q) |
+            Q(stock_items__product__name__icontains=q) |
+            Q(locality__name__icontains=q)
+        ).distinct()
+
+    if vendor_type:
+        vendors_qs = vendors_qs.filter(vendor_type=vendor_type)
+
+    if locality_id:
+        vendors_qs = vendors_qs.filter(locality_id=locality_id)
+    elif region_id:
+        vendors_qs = vendors_qs.filter(region_id=region_id)
+
+    paginator = Paginator(vendors_qs.order_by("-is_verified", "-created_at"), 12)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    context = {
+        "form": form,
+        "page_obj": page_obj,
+        "total_results": paginator.count,
+        "has_searched": has_searched,
+        "criteria": {
+            "q": q,
+            "vendor_type": vendor_type,
+            "radius_km": radius_km,
+        }
+    }
+    return render(request, "web/search/advanced.html", context)
+
+
+
 # ==============================================================================
 # 3. CONSEIL AGRICOLE & CONSEIL PRO
 # ==============================================================================
@@ -423,6 +476,109 @@ def conseil_subscription_view(request):
         "is_active": is_active,
     }
     return render(request, "web/conseil/subscription.html", context)
+
+
+@login_required
+def conseil_dashboard_view(request):
+    """Mon Espace Conseil avec calendrier cultural et statistiques personnelles (ConseilDashboardScreen)."""
+    sub = getattr(request.user, "conseil_subscription", None)
+    is_pro_active = bool(sub and sub.is_active)
+
+    # Statistiques
+    articles_favoris_count = request.user.articles_favoris.count()
+    profile = getattr(request.user, "buyer_profile", None)
+    raw_cultures = profile.culture_profile if (profile and profile.culture_profile) else "Tomate, Chou, Piment"
+    user_cultures = [c.strip() for c in raw_cultures.split(",") if c.strip()]
+
+    # Alertes reçues actives
+    active_alerts_count = Alerte.objects.filter(
+        date_debut__lte=timezone.now()
+    ).filter(
+        Q(date_fin__isnull=True) | Q(date_fin__gte=timezone.now())
+    ).count()
+
+    # Recommandations d'articles selon ses cultures
+    recommended_articles = Article.objects.filter(est_publie=True)
+    if user_cultures:
+        query_cultures = Q()
+        for c in user_cultures:
+            query_cultures |= Q(culture__icontains=c) | Q(titre__icontains=c)
+        recommended_articles = recommended_articles.filter(query_cultures)
+    recommended_articles = recommended_articles.order_by("-est_epingle", "-date_publication")[:4]
+
+    # Calendrier cultural type
+    calendar_stages = [
+        {"stage": "Préparation du sol & Labour", "status": "Terminée", "badge": "bg-green-100 text-green-800", "icon": "fa-check"},
+        {"stage": "Semis en pépinière & Germination", "status": "En cours", "badge": "bg-amber-100 text-amber-800", "icon": "fa-spinner"},
+        {"stage": "Repiquage en pleine terre", "status": "Prochaine étape (J+15)", "badge": "bg-blue-100 text-blue-800", "icon": "fa-calendar-day"},
+        {"stage": "Fertilisation & Traitement phytosanitaire", "status": "À planifier", "badge": "bg-gray-100 text-gray-700", "icon": "fa-clock"},
+        {"stage": "Récolte & Conditionnement", "status": "À venir", "badge": "bg-gray-100 text-gray-700", "icon": "fa-wheat-awn"},
+    ]
+
+    context = {
+        "subscription": sub,
+        "is_pro_active": is_pro_active,
+        "articles_favoris_count": articles_favoris_count,
+        "active_alerts_count": active_alerts_count,
+        "user_cultures": user_cultures,
+        "recommended_articles": recommended_articles,
+        "calendar_stages": calendar_stages,
+    }
+    return render(request, "web/conseil/dashboard.html", context)
+
+
+def alertes_list_view(request):
+    """Liste complète des alertes agricoles avec filtres régionaux et priorité (AlertesScreen)."""
+    filter_mode = request.GET.get("filter", "all")
+
+    alerts_qs = Alerte.objects.filter(
+        date_debut__lte=timezone.now()
+    ).filter(
+        Q(date_fin__isnull=True) | Q(date_fin__gte=timezone.now())
+    ).order_by("-priorite", "-date_debut")
+
+    user_region = None
+    if request.user.is_authenticated:
+        profile = getattr(request.user, "buyer_profile", None)
+        if profile and profile.region:
+            user_region = profile.region.name
+
+    if filter_mode == "my_region" and user_region:
+        alerts_qs = alerts_qs.filter(Q(region__icontains=user_region) | Q(region=""))
+
+    read_alert_ids = set()
+    if request.user.is_authenticated:
+        read_alert_ids = set(AlerteLue.objects.filter(utilisateur=request.user).values_list("alerte_id", flat=True))
+
+    paginator = Paginator(alerts_qs, 10)
+    page_obj = paginator.get_page(request.GET.get("page"))
+
+    context = {
+        "page_obj": page_obj,
+        "filter_mode": filter_mode,
+        "user_region": user_region,
+        "read_alert_ids": read_alert_ids,
+        "total_active": alerts_qs.count(),
+    }
+    return render(request, "web/conseil/alertes.html", context)
+
+
+@login_required
+@require_POST
+def alerte_mark_read_view(request, pk):
+    """Marque une alerte comme lue (AlerteLue)."""
+    alerte = get_object_or_404(Alerte, pk=pk)
+    AlerteLue.objects.get_or_create(utilisateur=request.user, alerte=alerte)
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"status": "read", "id": pk})
+    messages.success(request, f"L'alerte « {alerte.titre} » a été marquée comme lue.")
+    return redirect("web:alertes-list")
+
+
+def tips_view(request):
+    """Conseils pratiques agronomiques (TipsScreen)."""
+    return render(request, "web/conseil/tips.html")
+
 
 
 # ==============================================================================
@@ -665,6 +821,116 @@ def seller_subscription_view(request):
     return render(request, "web/seller/subscription.html", context)
 
 
+@login_required
+def seller_analytics_view(request):
+    """Tableau de bord analytique vendeur avec enregistrement de vente directe (SellerAnalyticsScreen)."""
+    vendor = Vendor.objects.filter(owner=request.user).first()
+    if not vendor:
+        messages.info(request, "Veuillez d'abord créer votre fiche vendeur.")
+        return redirect("web:seller-dashboard")
+
+    days = int(request.GET.get("days", 30))
+    if days not in [7, 30, 90]:
+        days = 30
+    start_date = timezone.now() - timedelta(days=days)
+
+    sales_qs = VendorSale.objects.filter(vendor=vendor, sold_at__gte=start_date)
+
+    sales_count = sales_qs.count()
+    total_quantity = sum(s.quantity for s in sales_qs)
+    total_revenue = sum(s.quantity * s.unit_price for s in sales_qs)
+    average_sale = (total_revenue // sales_count) if sales_count > 0 else 0
+
+    # Calcul exact des top produits
+    product_stats = {}
+    for s in sales_qs.select_related("product"):
+        pname = s.product.name
+        if pname not in product_stats:
+            product_stats[pname] = {"quantity": 0, "revenue": 0, "count": 0}
+        product_stats[pname]["quantity"] += s.quantity
+        product_stats[pname]["revenue"] += s.quantity * s.unit_price
+        product_stats[pname]["count"] += 1
+
+    top_products = sorted(
+        [{"product_name": k, **v} for k, v in product_stats.items()],
+        key=lambda x: x["revenue"],
+        reverse=True
+    )[:5]
+
+    # Historique récent des ventes
+    recent_sales = sales_qs.select_related("product").order_by("-sold_at")[:15]
+
+    # Formulaire d'enregistrement d'une vente directe
+    sale_form = RecordSaleForm()
+    if request.method == "POST":
+        sale_form = RecordSaleForm(request.POST)
+        if sale_form.is_valid():
+            product = sale_form.cleaned_data["product"]
+            qty = sale_form.cleaned_data["quantity"]
+            price = sale_form.cleaned_data["unit_price"]
+            buyer_contact = sale_form.cleaned_data["buyer_contact"]
+            notes = sale_form.cleaned_data["notes"]
+
+            VendorSale.objects.create(
+                vendor=vendor,
+                product=product,
+                quantity=qty,
+                unit_price=price,
+                buyer_contact=buyer_contact,
+                notes=notes,
+                sold_at=timezone.now()
+            )
+
+            # Mettre à jour le stock disponible si présent
+            vp = VendorProduct.objects.filter(vendor=vendor, product=product).first()
+            if vp:
+                vp.quantity_available = max(0, vp.quantity_available - qty)
+                vp.is_available = vp.quantity_available > 0
+                vp.save(update_fields=["quantity_available", "is_available", "updated_at"])
+                StockMovement.objects.create(
+                    stock=vp,
+                    movement_type=StockMovement.MovementType.OUT,
+                    quantity=qty,
+                    previous_quantity=vp.quantity_available + qty,
+                    new_quantity=vp.quantity_available,
+                    reason=f"Vente directe manuelle ({notes or 'au comptoir'})"[:255]
+                )
+
+            messages.success(request, f"Vente de {qty} {product.name} ({price * qty:,} FCFA) enregistrée avec succès !")
+            return redirect("web:seller-analytics")
+
+    context = {
+        "vendor": vendor,
+        "days": days,
+        "sales_count": sales_count,
+        "total_quantity": total_quantity,
+        "total_revenue": total_revenue,
+        "average_sale": average_sale,
+        "top_products": top_products,
+        "recent_sales": recent_sales,
+        "sale_form": sale_form,
+    }
+    return render(request, "web/seller/analytics.html", context)
+
+
+@login_required
+@require_POST
+def verify_seller_payment_view(request):
+    """Vérification manuelle d'une référence Chariow pour le statut Vendeur Pro (UserProfileScreen + SellerScreen)."""
+    form = VerifySellerPaymentForm(request.POST)
+    if form.is_valid():
+        ref = form.cleaned_data["reference"].strip()
+        try:
+            res = verify_and_activate_payment(request.user, ref)
+            messages.success(request, "Paiement Chariow confirmé ! Votre badge Vendeur Pro est désormais actif.")
+        except Exception as exc:
+            messages.error(request, f"Impossible de valider la référence Chariow : {exc}")
+    else:
+        messages.error(request, "Veuillez fournir une référence de paiement valide.")
+    return redirect("web:seller-dashboard")
+
+
+
 # ==============================================================================
 # 6. AUTHENTIFICATION & GESTION DE COMPTE
 # ==============================================================================
@@ -759,18 +1025,39 @@ def logout_view(request):
     return redirect("web:home")
 
 
+def get_or_create_buyer_profile(user):
+    """Récupère ou initialise un profil acheteur en fournissant des régions par défaut si nécessaire."""
+    profile = BuyerProfile.objects.filter(user=user).first()
+    if not profile:
+        reg = Region.objects.first()
+        loc = Locality.objects.filter(region=reg).first() if reg else None
+        if not loc:
+            loc = Locality.objects.first()
+        if reg and loc:
+            profile, _ = BuyerProfile.objects.get_or_create(
+                user=user,
+                defaults={
+                    "region": reg,
+                    "locality": loc,
+                    "full_name": user.get_full_name() or user.username,
+                    "email": user.email
+                }
+            )
+    return profile
+
+
 @login_required
 def profile_view(request):
     """Profil utilisateur et localisation acheteur (UserProfileScreen + BuyerProfileScreen)."""
-    profile, _ = BuyerProfile.objects.get_or_create(user=request.user)
+    profile = get_or_create_buyer_profile(request.user)
     account = getattr(request.user, "phone_account", None)
 
     profile_form = UserProfileForm(initial={
-        "full_name": profile.full_name or request.user.first_name,
-        "email": profile.email or request.user.email,
-        "culture_profile": profile.culture_profile,
-        "region": profile.region,
-        "locality": profile.locality,
+        "full_name": (profile.full_name if profile else "") or request.user.first_name,
+        "email": (profile.email if profile else "") or request.user.email,
+        "culture_profile": profile.culture_profile if profile else "",
+        "region": profile.region if profile else None,
+        "locality": profile.locality if profile else None,
     })
     password_form = PasswordChangeWebForm()
 
@@ -779,6 +1066,8 @@ def profile_view(request):
         if action == "update_profile":
             profile_form = UserProfileForm(request.POST)
             if profile_form.is_valid():
+                if not profile:
+                    profile = BuyerProfile(user=request.user)
                 profile.full_name = profile_form.cleaned_data["full_name"]
                 profile.email = profile_form.cleaned_data["email"]
                 profile.culture_profile = profile_form.cleaned_data["culture_profile"]
@@ -816,8 +1105,61 @@ def profile_view(request):
 
 
 @login_required
+def buyer_profile_view(request):
+    """Configuration de la zone de l'acheteur pour recevoir les vendeurs proches (BuyerProfileScreen)."""
+    profile = get_or_create_buyer_profile(request.user)
+    account = getattr(request.user, "phone_account", None)
+
+    if request.method == "POST":
+        form = BuyerProfileConfigForm(request.POST)
+        if form.is_valid():
+            if not profile:
+                profile = BuyerProfile(user=request.user)
+            profile.full_name = form.cleaned_data["full_name"]
+            profile.phone = form.cleaned_data["phone"]
+            profile.email = form.cleaned_data["email"]
+            profile.region = form.cleaned_data["region"]
+            profile.locality = form.cleaned_data["locality"]
+            profile.culture_profile = form.cleaned_data["culture_profile"]
+            profile.save()
+
+            if profile.full_name:
+                request.user.first_name = profile.full_name
+            if profile.email:
+                request.user.email = profile.email
+            request.user.save(update_fields=["first_name", "email"])
+
+            messages.success(request, f"Votre localisation ({profile.locality.name}, {profile.region.name}) a été enregistrée avec succès !")
+            return redirect("web:home")
+    else:
+        form = BuyerProfileConfigForm(initial={
+            "full_name": (profile.full_name if profile else "") or request.user.first_name,
+            "phone": (profile.phone if profile else "") or (account.phone_e164 if account else ""),
+            "email": (profile.email if profile else "") or request.user.email,
+            "region": profile.region if profile and hasattr(profile, "region") else None,
+            "locality": profile.locality if profile and hasattr(profile, "locality") else None,
+            "culture_profile": profile.culture_profile if profile else "",
+        })
+
+    local_vendors = []
+    if profile and profile.locality:
+        local_vendors = Vendor.objects.filter(
+            is_active=True,
+            approval_status=Vendor.ApprovalStatus.APPROVED,
+            locality=profile.locality
+        ).order_by("-is_verified", "-created_at")[:6]
+
+    context = {
+        "profile": profile,
+        "form": form,
+        "local_vendors": local_vendors,
+    }
+    return render(request, "web/account/buyer_profile.html", context)
+
+
+@login_required
 def favorites_view(request):
-    """Liste des vendeurs et produits favoris (FavoritesScreen)."""
+    """Liste des vendeurs, produits et articles de conseils favoris (FavoritesScreen)."""
     favorite_vendors = Vendor.objects.filter(
         favorite_by_users__user=request.user
     ).select_related("region", "locality")
@@ -826,9 +1168,14 @@ def favorites_view(request):
         favorite_by_users__user=request.user
     ).select_related("category")
 
+    favorite_articles = Article.objects.filter(
+        favoris_utilisateurs__utilisateur=request.user
+    ).select_related("categorie")
+
     context = {
         "favorite_vendors": favorite_vendors,
         "favorite_products": favorite_products,
+        "favorite_articles": favorite_articles,
     }
     return render(request, "web/account/favorites.html", context)
 
@@ -858,13 +1205,22 @@ def toggle_favorite(request):
             ProductFavorite.objects.create(user=request.user, product_id=target_id)
             return JsonResponse({"status": "added", "is_favorited": True})
 
+    elif target_type == "article":
+        fav = ArticleFavori.objects.filter(utilisateur=request.user, article_id=target_id)
+        if fav.exists():
+            fav.delete()
+            return JsonResponse({"status": "removed", "is_favorited": False})
+        else:
+            ArticleFavori.objects.create(utilisateur=request.user, article_id=target_id)
+            return JsonResponse({"status": "added", "is_favorited": True})
+
     return JsonResponse({"error": "Paramètres invalides"}, status=400)
 
 
 @login_required
 def notifications_view(request):
     """Centre de notifications et alertes (NotificationsScreen + AlertesScreen)."""
-    user_notifications = AppNotification.objects.filter(user=request.user).order_by("-created_at")
+    user_notifications = AppNotification.objects.filter(recipient=request.user).order_by("-sent_at")
 
     if request.method == "POST" and request.POST.get("action") == "mark_all_read":
         user_notifications.filter(is_read=False).update(is_read=True)
@@ -873,7 +1229,7 @@ def notifications_view(request):
 
     active_alerts = Alerte.objects.filter(date_debut__lte=timezone.now()).filter(
         Q(date_fin__isnull=True) | Q(date_fin__gte=timezone.now())
-    ).order_by("-date_debut")
+    ).order_by("-priorite", "-date_debut")
 
     context = {
         "notifications": user_notifications[:30],
@@ -882,7 +1238,90 @@ def notifications_view(request):
     return render(request, "web/account/notifications.html", context)
 
 
+def password_reset_request_view(request):
+    """Demande de réinitialisation de mot de passe avec code à 6 chiffres (LoginScreen reset mode)."""
+    form = PasswordResetRequestForm()
+    if request.method == "POST":
+        form = PasswordResetRequestForm(request.POST)
+        if form.is_valid():
+            identity = form.cleaned_data["identity"].strip()
+            try:
+                result = request_password_reset(identity)
+                request.session["reset_identity"] = identity
+                dev_code = result.get("dev_code") if isinstance(result, dict) else None
+                msg = "Un code de validation à 6 chiffres vous a été envoyé."
+                if dev_code:
+                    msg += f" (Code dev : {dev_code})"
+                messages.info(request, msg)
+                return redirect("web:password-reset-confirm")
+            except Exception as exc:
+                messages.error(request, f"Erreur : {exc}")
+
+    return render(request, "web/auth/password_reset.html", {"form": form})
+
+
+def password_reset_confirm_view(request):
+    """Confirmation du code et définition du nouveau mot de passe (LoginScreen reset confirm)."""
+    identity = request.session.get("reset_identity", "")
+    if not identity and request.method == "GET":
+        messages.warning(request, "Veuillez d'abord demander un code de réinitialisation.")
+        return redirect("web:password-reset-request")
+
+    form = PasswordResetConfirmForm(initial={"identity": identity})
+    if request.method == "POST":
+        form = PasswordResetConfirmForm(request.POST)
+        if form.is_valid():
+            ident = form.cleaned_data["identity"] or identity
+            code = form.cleaned_data["code"].strip()
+            new_password = form.cleaned_data["new_password"]
+            try:
+                reset_password(ident, code, new_password)
+                request.session.pop("reset_identity", None)
+                messages.success(request, "Votre mot de passe a été réinitialisé avec succès ! Vous pouvez maintenant vous connecter.")
+                return redirect("web:login")
+            except Exception as exc:
+                messages.error(request, f"Erreur lors de la réinitialisation : {exc}")
+
+    return render(request, "web/auth/password_reset_confirm.html", {"form": form, "identity": identity})
+
+
+def signup_verify_view(request):
+    """Validation du code OTP à 6 chiffres pour finaliser l'inscription (SignupVerifyScreen)."""
+    identity = request.session.get("signup_identity", "")
+    password = request.session.get("signup_password", "")
+
+    if not identity and request.method == "GET":
+        return redirect("web:signup")
+
+    form = VerifySignupCodeForm(initial={"identity": identity, "password": password})
+    if request.method == "POST":
+        form = VerifySignupCodeForm(request.POST)
+        if form.is_valid():
+            ident = form.cleaned_data["identity"] or identity
+            code = form.cleaned_data["code"].strip()
+            pwd = form.cleaned_data["password"] or password
+
+            try:
+                if "@" in ident:
+                    verify_result = verify_email_code(ident, code, pwd)
+                else:
+                    verify_result = verify_otp(ident, code, pwd)
+
+                user = verify_result.get("user")
+                if user:
+                    login(request, user)
+                    request.session.pop("signup_identity", None)
+                    request.session.pop("signup_password", None)
+                    messages.success(request, "Compte vérifié avec succès ! Veuillez configurer votre zone géographique.")
+                    return redirect("web:buyer-profile")
+            except Exception as exc:
+                messages.error(request, f"Code invalide ou expiré : {exc}")
+
+    return render(request, "web/auth/verify_code.html", {"form": form, "identity": identity})
+
+
 def ajax_localities_by_region(request, region_id):
     """Renvoie les localités d'une région en JSON pour les listes déroulantes dynamiques."""
     localities = Locality.objects.filter(region_id=region_id).values("id", "name").order_by("name")
     return JsonResponse({"localities": list(localities)})
+

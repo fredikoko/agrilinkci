@@ -1,0 +1,113 @@
+{% extends "web/base.html" %}
+
+{% block title %}Mon Profil Acheteur & Localisation — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-primary-900 text-white py-8">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
+        <a href="{% url 'web:home' %}" class="inline-flex items-center text-xs font-semibold text-green-200 hover:text-white mb-3">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> Retour à l'accueil
+        </a>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Mon Profil Acheteur</h1>
+        <p class="text-sm text-green-100 mt-1">Indiquez votre région et localité pour recevoir les vendeurs d'intrants les plus proches de vos parcelles.</p>
+    </div>
+</div>
+
+<div class="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+    <!-- Formulaire de localisation -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+        <h2 class="text-lg font-bold text-gray-900 mb-6 flex items-center">
+            <i class="fa-solid fa-map-location-dot text-primary-900 mr-2.5"></i>
+            Configuration de ma zone géographique
+        </h2>
+
+        <form method="post" class="space-y-5">
+            {% csrf_token %}
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Nom complet</label>
+                {{ form.full_name }}
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Téléphone</label>
+                    {{ form.phone }}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Adresse E-mail</label>
+                    {{ form.email }}
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Région ivoirienne <span class="text-red-500">*</span></label>
+                    {{ form.region }}
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Localité / Ville <span class="text-red-500">*</span></label>
+                    {{ form.locality }}
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Cultures principales pratiquées ou d'intérêt</label>
+                {{ form.culture_profile }}
+                <p class="text-xs text-gray-400 mt-1">Exemple : Cacao, Manioc, Chou, Tomate, Piment...</p>
+            </div>
+
+            <div class="pt-4 flex flex-col sm:flex-row gap-3">
+                <button type="submit" class="w-full sm:w-auto px-8 py-3.5 bg-primary-900 text-white font-bold rounded-xl shadow-md hover:bg-green-800 transition flex items-center justify-center">
+                    <i class="fa-solid fa-floppy-disk mr-2"></i> Enregistrer ma localisation
+                </button>
+                <a href="{% url 'web:home' %}" class="w-full sm:w-auto px-6 py-3.5 bg-gray-100 text-gray-700 font-semibold text-center rounded-xl hover:bg-gray-200 transition text-sm">
+                    Annuler
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Vendeurs proches actuellement -->
+    {% if local_vendors %}
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-gray-900 flex items-center">
+                <i class="fa-solid fa-store text-primary-900 mr-2"></i>
+                Vendeurs disponibles autour de {{ profile.locality.name }} ({{ profile.region.name }})
+            </h2>
+            <a href="{% url 'web:vendor-list' %}?locality={{ profile.locality.id }}" class="text-xs font-bold text-primary-900 hover:underline">
+                Voir tous →
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for vendor in local_vendors %}
+            <div class="bg-gray-50 rounded-2xl border border-gray-100 p-4 flex flex-col justify-between">
+                <div>
+                    <h3 class="font-bold text-gray-900 text-sm">
+                        <a href="{% url 'web:vendor-detail' vendor.id %}" class="hover:text-primary-900">
+                            {{ vendor.name }}
+                        </a>
+                    </h3>
+                    <p class="text-xs text-gray-500 mt-1">
+                        <i class="fa-solid fa-tag text-gray-400 mr-1"></i> {{ vendor.vendor_type|capfirst }}
+                    </p>
+                </div>
+                <div class="mt-3 pt-2 border-t border-gray-200 flex items-center justify-between text-xs">
+                    <a href="{% url 'web:vendor-detail' vendor.id %}" class="font-bold text-primary-900">Détails</a>
+                    {% if vendor.whatsapp_number or vendor.phone %}
+                    <a href="https://wa.me/{{ vendor.whatsapp_number|default:vendor.phone|cut:'+'|cut:' ' }}" target="_blank" class="w-6 h-6 rounded-md bg-green-500 text-white flex items-center justify-center text-xs">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

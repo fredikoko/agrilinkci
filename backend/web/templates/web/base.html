@@ -79,14 +79,20 @@
                 </div>
 
                 <!-- Desktop Navigation Links -->
-                <nav class="hidden md:flex items-center space-x-1 lg:space-x-3 text-sm font-medium">
-                    <a href="{% url 'web:vendor-list' %}" class="px-3 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
+                <nav class="hidden md:flex items-center space-x-1 lg:space-x-2 text-sm font-medium">
+                    <a href="{% url 'web:vendor-list' %}" class="px-2.5 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
                         <i class="fa-solid fa-store mr-1 text-primary-700"></i> Vendeurs
                     </a>
-                    <a href="{% url 'web:conseil-list' %}" class="px-3 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
-                        <i class="fa-solid fa-book-open mr-1 text-primary-700"></i> Conseil Pro
+                    <a href="{% url 'web:advanced-search' %}" class="px-2.5 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition" title="Recherche géographique et filtres">
+                        <i class="fa-solid fa-sliders mr-1 text-primary-700"></i> Recherche avancée
                     </a>
-                    <a href="{% url 'web:provider-list' %}" class="px-3 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
+                    <a href="{% url 'web:conseil-list' %}" class="px-2.5 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
+                        <i class="fa-solid fa-book-open mr-1 text-primary-700"></i> Conseils
+                    </a>
+                    <a href="{% url 'web:alertes-list' %}" class="px-2.5 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
+                        <i class="fa-solid fa-triangle-exclamation mr-1 text-amber-500"></i> Alertes
+                    </a>
+                    <a href="{% url 'web:provider-list' %}" class="px-2.5 py-2 rounded-lg text-gray-700 hover:text-primary-900 hover:bg-gray-100 transition">
                         <i class="fa-solid fa-tractor mr-1 text-primary-700"></i> Prestataires
                     </a>
                 </nav>
@@ -180,9 +186,25 @@
                     <i class="fa-solid fa-store text-primary-700 w-5"></i>
                     <span>Annuaire des Vendeurs</span>
                 </a>
+                <a href="{% url 'web:advanced-search' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-sliders text-primary-700 w-5"></i>
+                    <span>Recherche Avancée (Rayon km)</span>
+                </a>
                 <a href="{% url 'web:conseil-list' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
                     <i class="fa-solid fa-book-open text-primary-700 w-5"></i>
-                    <span>Conseil Agricole & Alertes</span>
+                    <span>Conseil Agricole</span>
+                </a>
+                <a href="{% url 'web:conseil-dashboard' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-calendar-check text-primary-700 w-5"></i>
+                    <span>Mon Espace Conseil & Calendrier</span>
+                </a>
+                <a href="{% url 'web:alertes-list' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 w-5"></i>
+                    <span>Alertes Agricoles & Météo</span>
+                </a>
+                <a href="{% url 'web:tips' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
+                    <i class="fa-solid fa-lightbulb text-primary-700 w-5"></i>
+                    <span>Astuces & Bonnes Pratiques</span>
                 </a>
                 <a href="{% url 'web:conseil-diagnostic' %}" class="flex items-center space-x-3 px-3 py-2.5 rounded-lg text-gray-700 hover:bg-gray-100 font-medium">
                     <i class="fa-solid fa-stethoscope text-primary-700 w-5"></i>
@@ -202,6 +224,10 @@
                     <i class="fa-solid fa-gauge text-gray-500 w-5"></i>
                     <span>Espace Vendeur</span>
                 </a>
+                <a href="{% url 'web:seller-analytics' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
+                    <i class="fa-solid fa-chart-line text-gray-500 w-5"></i>
+                    <span>Analytique & Ventes directes</span>
+                </a>
                 <a href="{% url 'web:provider-space' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
                     <i class="fa-solid fa-screwdriver-wrench text-gray-500 w-5"></i>
                     <span>Espace Prestataire</span>
@@ -218,7 +244,11 @@
                 <div class="space-y-1">
                     <a href="{% url 'web:profile' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
                         <i class="fa-solid fa-user text-gray-500 w-5"></i>
-                        <span>Mon Profil & Localisation</span>
+                        <span>Mon Profil Utilisateur</span>
+                    </a>
+                    <a href="{% url 'web:buyer-profile' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
+                        <i class="fa-solid fa-map-location-dot text-gray-500 w-5"></i>
+                        <span>Ma Localisation Acheteur</span>
                     </a>
                     <a href="{% url 'web:favorites' %}" class="flex items-center space-x-3 px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 text-sm">
                         <i class="fa-solid fa-heart text-gray-500 w-5"></i>

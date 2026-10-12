@@ -217,3 +217,248 @@ class PasswordChangeWebForm(forms.Form):
         if p1 and p2 and p1 != p2:
             raise ValidationError("Les nouveaux mots de passe ne correspondent pas.")
         return cleaned_data
+
+
+class AdvancedSearchForm(forms.Form):
+    q = forms.CharField(
+        label="Mots-clés / Produit",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "Ex: semence de chou, engrais NPK, herbicide...",
+        })
+    )
+    vendor_type = forms.ChoiceField(
+        label="Type de vendeur",
+        required=False,
+        choices=[
+            ("", "Tous les types"),
+            ("grossiste", "Grossiste"),
+            ("détaillant", "Détaillant"),
+            ("coopérative", "Coopérative"),
+        ],
+        widget=forms.Select(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+        })
+    )
+    radius_km = forms.ChoiceField(
+        label="Rayon géographique",
+        required=False,
+        choices=[
+            ("", "Toutes distances"),
+            ("5", "Dans un rayon de 5 km"),
+            ("10", "Dans un rayon de 10 km"),
+            ("25", "Dans un rayon de 25 km"),
+            ("50", "Dans un rayon de 50 km"),
+        ],
+        widget=forms.Select(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+        })
+    )
+    region = forms.ModelChoiceField(
+        label="Région",
+        queryset=Region.objects.all(),
+        required=False,
+        empty_label="Toutes les régions",
+        widget=forms.Select(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "id": "id_adv_region",
+        })
+    )
+    locality = forms.ModelChoiceField(
+        label="Localité",
+        queryset=Locality.objects.all(),
+        required=False,
+        empty_label="Toutes les localités",
+        widget=forms.Select(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "id": "id_adv_locality",
+        })
+    )
+
+
+class RecordSaleForm(forms.Form):
+    product = forms.ModelChoiceField(
+        label="Produit vendu",
+        queryset=Product.objects.all(),
+        widget=forms.Select(attrs={
+            "class": "w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-sm",
+        })
+    )
+    quantity = forms.IntegerField(
+        label="Quantité",
+        min_value=1,
+        widget=forms.NumberInput(attrs={
+            "class": "w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-sm",
+            "placeholder": "Ex: 10",
+        })
+    )
+    unit_price = forms.IntegerField(
+        label="Prix unitaire (FCFA)",
+        min_value=0,
+        widget=forms.NumberInput(attrs={
+            "class": "w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-sm",
+            "placeholder": "Ex: 2500",
+        })
+    )
+    buyer_contact = forms.CharField(
+        label="Contact de l'acheteur (optionnel)",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-sm",
+            "placeholder": "Ex: +2250701020304 ou Nom client",
+        })
+    )
+    notes = forms.CharField(
+        label="Notes ou observation (optionnel)",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-sm",
+            "placeholder": "Ex: Vente au comptoir, sac de 50kg...",
+        })
+    )
+
+
+class BuyerProfileConfigForm(forms.Form):
+    full_name = forms.CharField(
+        label="Nom complet",
+        max_length=150,
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "Ex: Yao Koffi",
+        })
+    )
+    phone = forms.CharField(
+        label="Numéro de téléphone",
+        max_length=30,
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "+2250700000000",
+        })
+    )
+    email = forms.EmailField(
+        label="Adresse e-mail",
+        required=False,
+        widget=forms.EmailInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "nom@exemple.ci",
+        })
+    )
+    region = forms.ModelChoiceField(
+        label="Région",
+        queryset=Region.objects.all(),
+        required=True,
+        empty_label="Sélectionnez votre région",
+        widget=forms.Select(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "id": "id_buyer_region",
+        })
+    )
+    locality = forms.ModelChoiceField(
+        label="Localité",
+        queryset=Locality.objects.all(),
+        required=True,
+        empty_label="Sélectionnez votre localité",
+        widget=forms.Select(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "id": "id_buyer_locality",
+        })
+    )
+    culture_profile = forms.CharField(
+        label="Cultures d'intérêt principales",
+        required=False,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "Ex: Cacao, Manioc, Chou, Tomate...",
+        })
+    )
+
+
+class PasswordResetRequestForm(forms.Form):
+    identity = forms.CharField(
+        label="Numéro de téléphone ou Adresse e-mail",
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "+2250700000000 ou email@exemple.ci",
+            "required": True,
+        })
+    )
+
+
+class PasswordResetConfirmForm(forms.Form):
+    identity = forms.CharField(
+        label="Identifiant (téléphone ou e-mail)",
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-gray-700 outline-none text-sm",
+            "readonly": True,
+        })
+    )
+    code = forms.CharField(
+        label="Code de vérification (6 chiffres)",
+        max_length=6,
+        min_length=6,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl text-center font-mono tracking-widest text-xl focus:ring-2 focus:ring-primary-600 outline-none",
+            "placeholder": "123456",
+            "required": True,
+        })
+    )
+    new_password = forms.CharField(
+        label="Nouveau mot de passe",
+        min_length=6,
+        widget=forms.PasswordInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "••••••••",
+            "required": True,
+        })
+    )
+    confirm_password = forms.CharField(
+        label="Confirmer le mot de passe",
+        widget=forms.PasswordInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-base",
+            "placeholder": "••••••••",
+            "required": True,
+        })
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        p1 = cleaned_data.get("new_password")
+        p2 = cleaned_data.get("confirm_password")
+        if p1 and p2 and p1 != p2:
+            raise ValidationError("Les nouveaux mots de passe ne correspondent pas.")
+        return cleaned_data
+
+
+class VerifySignupCodeForm(forms.Form):
+    identity = forms.CharField(
+        widget=forms.HiddenInput()
+    )
+    code = forms.CharField(
+        label="Code de validation à 6 chiffres",
+        max_length=6,
+        min_length=6,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-3 border border-gray-300 rounded-xl text-center font-mono tracking-widest text-2xl focus:ring-2 focus:ring-primary-600 outline-none",
+            "placeholder": "123456",
+            "required": True,
+        })
+    )
+    password = forms.CharField(
+        widget=forms.HiddenInput()
+    )
+
+
+class VerifySellerPaymentForm(forms.Form):
+    reference = forms.CharField(
+        label="Référence Chariow reçue après paiement",
+        max_length=120,
+        widget=forms.TextInput(attrs={
+            "class": "w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-600 outline-none text-sm",
+            "placeholder": "Ex: CHW-SUB-12345678",
+            "required": True,
+        })
+    )
+

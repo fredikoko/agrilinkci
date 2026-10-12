@@ -1,0 +1,133 @@
+{% extends "web/base.html" %}
+
+{% block title %}Mon Espace Conseil — AgriLink CI{% endblock %}
+
+{% block content %}
+<div class="bg-primary-900 text-white py-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <a href="{% url 'web:conseil-list' %}" class="inline-flex items-center text-xs font-semibold text-green-200 hover:text-white mb-3">
+            <i class="fa-solid fa-arrow-left mr-1.5"></i> Retour aux conseils
+        </a>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+                <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Mon Espace Conseil</h1>
+                <p class="text-sm text-green-100 mt-1">Suivi personnalisé de vos cultures, calendrier cultural et alertes agronomiques.</p>
+            </div>
+            <div>
+                {% if is_pro_active %}
+                <span class="inline-flex items-center px-4 py-2 bg-amber-500 text-white text-xs font-extrabold rounded-full shadow-sm">
+                    <i class="fa-solid fa-crown mr-1.5"></i> Membre Conseil Pro Actif
+                </span>
+                {% else %}
+                <a href="{% url 'web:conseil-subscription' %}" class="inline-flex items-center px-4 py-2 bg-accent text-white text-xs font-bold rounded-xl shadow-md hover:bg-orange-600 transition">
+                    <i class="fa-solid fa-unlock mr-1.5"></i> Passer à Conseil Pro (3 000 FCFA/mois)
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+
+    <!-- Cartes statistiques personnelles (comme dans ConseilDashboardScreen) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm text-center">
+            <p class="text-3xl font-black text-primary-900">{{ articles_favoris_count }}</p>
+            <p class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-wider">Conseils Favoris</p>
+        </div>
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm text-center">
+            <p class="text-3xl font-black text-accent">{{ active_alerts_count }}</p>
+            <p class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-wider">Alertes Actives</p>
+        </div>
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm text-center">
+            <p class="text-3xl font-black text-primary-700">{{ user_cultures|length }}</p>
+            <p class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-wider">Cultures Suivies</p>
+        </div>
+        <div class="bg-white rounded-3xl border border-gray-200 p-5 shadow-sm text-center">
+            <p class="text-sm font-black {% if is_pro_active %}text-green-600{% else %}text-gray-600{% endif %} mt-2">
+                {% if is_pro_active %}CONSEIL PRO{% else %}GRATUIT{% endif %}
+            </p>
+            <p class="text-xs font-bold text-gray-500 mt-1 uppercase tracking-wider">Forfait Actuel</p>
+        </div>
+    </div>
+
+    <!-- Mes cultures d'intérêt -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-bold text-gray-900 flex items-center">
+                <i class="fa-solid fa-leaf text-primary-900 mr-2"></i> Mes Cultures Suivies
+            </h2>
+            <a href="{% url 'web:buyer-profile' %}" class="text-xs font-bold text-primary-900 hover:underline">
+                Modifier mes cultures →
+            </a>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% for culture in user_cultures %}
+            <a href="{% url 'web:conseil-list' %}?culture={{ culture }}" class="inline-flex items-center px-4 py-2 bg-primary-50 text-primary-900 text-sm font-bold rounded-2xl border border-primary-200 hover:bg-primary-100 transition">
+                <i class="fa-solid fa-seedling mr-2 text-primary-700"></i> {{ culture }}
+            </a>
+            {% empty %}
+            <p class="text-xs text-gray-500">Aucune culture renseignée dans votre profil.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Mon Calendrier Cultural (issu de ConseilDashboardScreen) -->
+    <div class="bg-white rounded-3xl border border-gray-200 p-6 sm:p-8 shadow-sm">
+        <h2 class="text-lg font-bold text-gray-900 mb-6 flex items-center">
+            <i class="fa-solid fa-calendar-check text-primary-900 mr-2.5"></i> Mon Calendrier Cultural de Référence
+        </h2>
+
+        <div class="space-y-4">
+            {% for stage in calendar_stages %}
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl border border-gray-100">
+                <div class="flex items-center space-x-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-white text-primary-900 border border-gray-200 flex items-center justify-center font-bold text-sm shadow-sm">
+                        <i class="fa-solid {{ stage.icon }}"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-900 text-sm sm:text-base">{{ stage.stage }}</h3>
+                        <p class="text-xs text-gray-500">Suivi agronomique et gestion des intrants</p>
+                    </div>
+                </div>
+                <span class="px-3 py-1 rounded-full text-xs font-bold {{ stage.badge }}">
+                    {{ stage.status }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Raccourcis d'actions rapides -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <a href="{% url 'web:conseil-diagnostic' %}" class="bg-primary-900 text-white rounded-3xl p-6 shadow-sm hover:bg-green-800 transition flex flex-col justify-between">
+            <div>
+                <i class="fa-solid fa-stethoscope text-2xl text-accent mb-2"></i>
+                <h3 class="font-bold text-base">Diagnostic Rapide</h3>
+                <p class="text-xs text-green-100 mt-1">Identifiez les ravageurs et maladies sur vos parcelles.</p>
+            </div>
+            <span class="mt-4 text-xs font-bold text-amber-300">Lancer un diagnostic →</span>
+        </a>
+
+        <a href="{% url 'web:alertes-list' %}" class="bg-white border border-gray-200 text-gray-900 rounded-3xl p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div>
+                <i class="fa-solid fa-triangle-exclamation text-2xl text-amber-500 mb-2"></i>
+                <h3 class="font-bold text-base">Alertes Agricoles</h3>
+                <p class="text-xs text-gray-500 mt-1">Alertes météo, sécheresse et traitements phytosanitaires d'urgence.</p>
+            </div>
+            <span class="mt-4 text-xs font-bold text-primary-900">Voir les alertes ({{ active_alerts_count }}) →</span>
+        </a>
+
+        <a href="{% url 'web:tips' %}" class="bg-white border border-gray-200 text-gray-900 rounded-3xl p-6 shadow-sm hover:shadow-md transition flex flex-col justify-between">
+            <div>
+                <i class="fa-solid fa-lightbulb text-2xl text-primary-900 mb-2"></i>
+                <h3 class="font-bold text-base">Conseils Pratiques</h3>
+                <p class="text-xs text-gray-500 mt-1">Guides de bonnes pratiques pour le stockage et l'usage des intrants.</p>
+            </div>
+            <span class="mt-4 text-xs font-bold text-primary-900">Lire les astuces →</span>
+        </a>
+    </div>
+
+</div>
+{% endblock %}
